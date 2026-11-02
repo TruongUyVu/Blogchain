@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BlogChain DApp</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+  <!-- Ethers.js v6 CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
+</head>
+<body>
+  <div class="background-glow"></div>
+
+  <div class="app-container">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo-group">
+        <div class="logo-icon">⚡</div>
+        <div>
+          <h1 class="logo-title">Web3 DApp Portal</h1>
+          <p class="logo-subtitle">Tương tác Smart Contract trên mạng Ganache Local</p>
+        </div>
+      </div>
+
+      <div class="wallet-header-card">
+        <button id="switchNetworkBtn" class="btn btn-secondary" style="margin-right:8px;">🔀 Chuyển sang Ganache</button>
+        <button id="connectWalletBtn" class="btn btn-primary">
+          <span class="btn-icon">🦊</span>
+          <span id="connectBtnText">Kết nối MetaMask</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Network & Wallet Info Bar -->
+    <section class="info-bar">
+      <div class="info-card">
+        <span class="info-label">Trạng thái mạng</span>
+        <div class="info-value-group">
+          <span id="networkStatusDot" class="status-dot offline"></span>
+          <span id="networkName" class="info-value">Chưa kết nối</span>
+        </div>
+      </div>
+      <div class="info-card">
+        <span class="info-label">Địa chỉ ví</span>
+        <span id="walletAddress" class="info-value mono">0x000...000</span>
+      </div>
+      <div class="info-card">
+        <span class="info-label">Số dư ETH</span>
+        <span id="walletBalance" class="info-value highlight">0.0000 ETH</span>
+      </div>
+    </section>
+
+    <!-- Main Grid -->
+    <main class="main-grid">
+      <!-- Cột 1: Cấu hình Smart Contract -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-tag">Bước 1</div>
+          <h2 class="panel-title">Thiết lập Smart Contract</h2>
+        </div>
+        <p class="panel-desc">
+          Dán <strong>Contract Address</strong> của BlogChain nhận được sau khi chạy <code>truffle migrate</code> vào đây.
+        </p>
+
+        <div class="form-group">
+          <label for="contractAddressInput">Địa chỉ Contract (0x...):</label>
+          <input 
+            type="text" 
+            id="contractAddressInput" 
+            placeholder="Ví dụ: 0xE8B327Bf5422511be3E9c66945e038265D8D6B11" 
+            class="input-field mono"
+          />
+        </div>
+
+        <button id="loadContractBtn" class="btn btn-secondary w-100">
+          🔍 Tải & Kết nối Contract
+        </button>
+
+        <div class="contract-status-box" id="contractStatusBox">
+          <span id="contractStatusText">Chưa nạp Contract</span>
+        </div>
+      </div>
+
+      <!-- Cột 2: Tương tác Đọc & Ghi dữ liệu -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-tag">Bước 2</div>
+          <h2 class="panel-title">Tương tác Hợp đồng</h2>
+        </div>
+
+        <!-- Write Action -->
+        <div class="action-card write-card">
+          <div class="action-header">
+            <span class="badge badge-write">WRITE (Tốn Gas - Ký MetaMask)</span>
+            <span id="writeModeLabel" class="action-method">createPost(title, content)</span>
+          </div>
+          <div class="form-group">
+            <input 
+              type="text" 
+              id="postTitleInput" 
+              placeholder="Tiêu đề bài viết (tối đa 100 byte)" 
+              class="input-field"
+            />
+          </div>
+          <div class="form-group">
+            <textarea 
+              id="postContentInput" 
+              rows="4" 
+              placeholder="Nội dung bài viết (tối đa 2000 byte)" 
+              class="input-field"
+            ></textarea>
+          </div>
+          <button id="submitPostBtn" class="btn btn-accent w-100">
+            ✍️ Đăng bài lên Blockchain (Gửi giao dịch)
+          </button>
+          <button id="cancelEditBtn" class="btn-text" style="display: none;">Hủy chỉnh sửa</button>
+        </div>
+
+        <!-- Read Action -->
+        <div class="action-card read-card">
+          <div class="action-header">
+            <span class="badge badge-read">READ (Không tốn Gas)</span>
+            <span class="action-method">getPostCount() / getPost(id)</span>
+          </div>
+          <div class="display-box">
+            <span class="display-label">Bài viết trên Blockchain:</span>
+            <div id="postCountDisplay" class="display-content">---</div>
+          </div>
+          <div id="postsList" class="posts-list"></div>
+          <button id="refreshPostsBtn" class="btn btn-outline w-100">
+            🔄 Tải lại danh sách bài viết
+          </button>
+        </div>
+      </div>
+    </main>
+
+    <!-- Activity & Logs Panel -->
+    <section class="panel logs-panel">
+      <div class="panel-header">
+        <h2 class="panel-title">📜 Nhật ký Giao dịch & Sự kiện (Transaction Logs)</h2>
+        <button id="clearLogsBtn" class="btn-text">Xóa nhật ký</button>
+      </div>
+      <div id="logsContainer" class="logs-container mono">
+        <div class="log-entry log-info">[Hệ thống] Sẵn sàng kết nối ví MetaMask và Ganache...</div>
+      </div>
+    </section>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

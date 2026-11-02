@@ -1,0 +1,15 @@
+# Chỉ theo dõi mã dự án; bỏ qua mọi thứ khác ở thư mục gốc
+/*
+!/.gitignore
+!/README.md
+!/blogchain-truffle/
+!/dapp/
+!/chay-dapp.bat
+
+# Bên trong dự án: bỏ qua thư mục sinh ra tự động và file bí mật
+node_modules/
+build/
+.env
+*.key
+*.pem
+.DS_Store
