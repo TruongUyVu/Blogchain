@@ -21,12 +21,12 @@
         <div class="logo-icon">⚡</div>
         <div>
           <h1 class="logo-title">Web3 DApp Portal</h1>
-          <p class="logo-subtitle">Tương tác Smart Contract trên mạng Ganache Local</p>
+          <p id="networkSubtitle" class="logo-subtitle">Tương tác Smart Contract trên Blockchain</p>
         </div>
       </div>
 
       <div class="wallet-header-card">
-        <button id="switchNetworkBtn" class="btn btn-secondary" style="margin-right:8px;">🔀 Chuyển sang Ganache</button>
+        <button id="switchNetworkBtn" class="btn btn-secondary" style="margin-right:8px;">🔀 Chuyển mạng</button>
         <button id="connectWalletBtn" class="btn btn-primary">
           <span class="btn-icon">🦊</span>
           <span id="connectBtnText">Kết nối MetaMask</span>
@@ -62,7 +62,8 @@
           <h2 class="panel-title">Thiết lập Smart Contract</h2>
         </div>
         <p class="panel-desc">
-          Dán <strong>Contract Address</strong> của BlogChain nhận được sau khi chạy <code>truffle migrate</code> vào đây.
+          Địa chỉ <strong>Contract</strong> BlogChain đã được điền sẵn và tự nạp khi bạn kết nối MetaMask.
+          Muốn dùng contract khác thì dán địa chỉ (nhận được sau khi chạy <code>truffle migrate</code>) vào đây.
         </p>
 
         <div class="form-group">
@@ -129,6 +130,7 @@
             <span class="display-label">Bài viết trên Blockchain:</span>
             <div id="postCountDisplay" class="display-content">---</div>
           </div>
+          <label class="check-row"><input type="checkbox" id="showDeletedChk" /> Hiện cả bài đã xóa mềm</label>
           <div id="postsList" class="posts-list"></div>
           <button id="refreshPostsBtn" class="btn btn-outline w-100">
             🔄 Tải lại danh sách bài viết
@@ -137,6 +139,16 @@
       </div>
     </main>
 
+    <!-- Lịch sử giao dịch của blog -->
+    <section class="panel history-panel">
+      <div class="panel-header">
+        <h2 class="panel-title">🧾 Lịch sử giao dịch của blog</h2>
+        <button id="refreshHistoryBtn" class="btn-text">Tải lại</button>
+      </div>
+      <p class="panel-desc">Lấy từ các sự kiện <code>PostCreated</code>, <code>PostEdited</code>, <code>PostDeleted</code> trên chuỗi. Bấm vào mã giao dịch để sao chép.</p>
+      <div id="historyList" class="history-wrap"><div class="display-content">Chưa nạp Contract.</div></div>
+    </section>
+
     <!-- Activity & Logs Panel -->
     <section class="panel logs-panel">
       <div class="panel-header">
@@ -144,9 +156,19 @@
         <button id="clearLogsBtn" class="btn-text">Xóa nhật ký</button>
       </div>
       <div id="logsContainer" class="logs-container mono">
-        <div class="log-entry log-info">[Hệ thống] Sẵn sàng kết nối ví MetaMask và Ganache...</div>
       </div>
     </section>
+  </div>
+
+  <!-- Cửa sổ chi tiết bài viết -->
+  <div id="detailModal" class="modal">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3 id="detailTitle" class="modal-title">Chi tiết bài viết</h3>
+        <button id="detailCloseBtn" class="btn-text">Đóng ✕</button>
+      </div>
+      <div id="detailBody" class="modal-body"></div>
+    </div>
   </div>
 
   <script src="app.js"></script>

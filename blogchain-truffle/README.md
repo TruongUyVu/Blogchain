@@ -47,6 +47,26 @@ truffle(development)> await blog.getPost(0)
    - ABI: mở `build/contracts/BlogChain.json`, copy mảng `abi` để thay `CONTRACT_ABI` trong `dapp/app.js`.
    - Giao diện hiện tại vẫn là bản SimpleStorage, cần sửa để có form đăng bài và danh sách bài viết.
 
+## Đưa lên Internet (Sepolia + GitHub Pages)
+
+DApp mặc định dùng testnet **Sepolia** (`const NET = NETWORKS.sepolia` trong `dapp/app.js`).
+Chạy thử trên máy với Ganache thì đổi thành `NETWORKS.ganache`.
+
+1. Trong MetaMask, tạo một tài khoản riêng để deploy, xin Sepolia ETH miễn phí ở một "Sepolia faucet".
+2. Lấy RPC URL Sepolia ở Infura hoặc Alchemy.
+3. Copy `.env.example` thành `.env`, điền `SEPOLIA_RPC_URL` và `PRIVATE_KEY` (file `.env` không bao giờ được đưa lên Git).
+4. Deploy:
+
+```
+cd D:\Blogchain\blogchain-truffle
+npm install
+truffle migrate --network sepolia
+```
+
+5. Dán địa chỉ contract `BlogChain` và số block lúc deploy vào `NETWORKS.sepolia` (`contractAddress`, `deployBlock`) trong `dapp/app.js`.
+6. Commit, push, rồi bật GitHub Pages (Settings → Pages → nhánh `main`). Link DApp:
+   `https://truonguyvu.github.io/Blogchain/dapp/`
+
 ## Lỗi thường gặp
 
 | Lỗi | Cách xử lý |

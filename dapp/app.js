@@ -265,30 +265,65 @@ const cancelEditBtn = document.getElementById('cancelEditBtn');
 const logsContainer = document.getElementById('logsContainer');
 const clearLogsBtn = document.getElementById('clearLogsBtn');
 
+const showDeletedChk = document.getElementById('showDeletedChk');
+const historyList = document.getElementById('historyList');
+const refreshHistoryBtn = document.getElementById('refreshHistoryBtn');
+const detailModal = document.getElementById('detailModal');
+const detailTitle = document.getElementById('detailTitle');
+const detailBody = document.getElementById('detailBody');
+const detailCloseBtn = document.getElementById('detailCloseBtn');
+
 const SUBMIT_TEXT_CREATE = '✍️ Đăng bài lên Blockchain (Gửi giao dịch)';
 const SUBMIT_TEXT_EDIT = '💾 Lưu chỉnh sửa (Gửi giao dịch)';
 
-// Mạng Ganache cục bộ (Chain ID mặc định của Ganache là 1337 = 0x539)
-const GANACHE_CHAIN_ID = 1337;
-const GANACHE_CHAIN_PARAMS = {
-  chainId: '0x539',
-  chainName: 'Ganache Local',
-  rpcUrls: ['http://127.0.0.1:7545'],
-  nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 }
+// Các mạng DApp hỗ trợ.
+//  - contractAddress: địa chỉ BlogChain trên mạng đó (in ra khi chạy truffle migrate), để trống thì người dùng tự dán.
+//  - deployBlock: số block lúc deploy contract; đọc lịch sử sự kiện từ block này thay vì từ 0 cho nhanh.
+const NETWORKS = {
+  sepolia: {
+    chainId: 11155111,
+    label: 'Sepolia Testnet',
+    contractAddress: '0x1b59c8aAAa7a258eafe7c708Fc27b6d4e2a7e7F0', // in ra khi chạy: truffle migrate --network sepolia
+    deployBlock: 12146786, // dòng "block number" của BlogChain khi deploy
+    explorer: 'https://sepolia.etherscan.io',
+    params: {
+      chainId: '0xaa36a7',
+      chainName: 'Sepolia',
+      rpcUrls: ['https://ethereum-sepolia-rpc.publicnode.com'],
+      nativeCurrency: { name: 'Sepolia Ether', symbol: 'ETH', decimals: 18 },
+      blockExplorerUrls: ['https://sepolia.etherscan.io']
+    }
+  },
+  ganache: {
+    chainId: 1337,
+    label: 'Ganache Local',
+    contractAddress: '',
+    deployBlock: 0,
+    explorer: null,
+    params: {
+      chainId: '0x539',
+      chainName: 'Ganache Local',
+      rpcUrls: ['http://127.0.0.1:7545'],
+      nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 }
+    }
+  }
 };
 
-// Thêm (nếu chưa có) và chuyển MetaMask sang mạng Ganache
-async function switchToGanache() {
+// Mạng đang dùng. Chạy thử trên máy với Ganache thì đổi thành NETWORKS.ganache
+const NET = NETWORKS.sepolia;
+
+// Thêm (nếu chưa có) và chuyển MetaMask sang mạng của DApp
+async function switchNetwork() {
   if (typeof window.ethereum === 'undefined') {
     addLog('Không tìm thấy MetaMask!', 'error');
     return;
   }
   try {
-    addLog('Đang yêu cầu MetaMask chuyển sang mạng Ganache...', 'info');
+    addLog(`Đang yêu cầu MetaMask chuyển sang mạng ${NET.label}...`, 'info');
     try {
       await window.ethereum.request({
         method: 'wallet_switchEthereumChain',
-        params: [{ chainId: GANACHE_CHAIN_PARAMS.chainId }]
+        params: [{ chainId: NET.params.chainId }]
       });
     } catch (switchError) {
       const msg = String(switchError.message || '');
@@ -296,13 +331,13 @@ async function switchToGanache() {
       if (!notAdded) throw switchError;
       await window.ethereum.request({
         method: 'wallet_addEthereumChain',
-        params: [GANACHE_CHAIN_PARAMS]
+        params: [NET.params]
       });
     }
-    addLog('Đã chuyển sang mạng Ganache. Hãy bấm "Kết nối MetaMask" nếu số dư chưa cập nhật.', 'success');
+    addLog(`Đã chuyển sang mạng ${NET.label}. Hãy bấm "Kết nối MetaMask" nếu số dư chưa cập nhật.`, 'success');
   } catch (error) {
     console.error(error);
-    addLog(`Không chuyển được mạng: ${error.message || error}. Nếu MetaMask báo Chain ID không khớp, hãy thêm mạng thủ công bằng đúng Chain ID Ganache báo.`, 'error');
+    addLog(`Không chuyển được mạng: ${error.message || error}. Hãy mở MetaMask và chọn mạng ${NET.label} thủ công.`, 'error');
   }
 }
 
@@ -341,8 +376,8 @@ function errorReason(error) {
   // Gợi ý nguyên nhân thường gặp bằng tiếng Việt
   const all = `${text} ${JSON.stringify(error.error || {})}`.toLowerCase();
   let hint = '';
-  if (all.includes('nonce')) hint = ' → GỢI Ý: MetaMask lệch nonce sau khi Ganache khởi động lại. Vào MetaMask > Settings > Advanced > Clear activity tab data.';
-  else if (all.includes('insufficient funds') || all.includes("doesn't have enough funds")) hint = ' → GỢI Ý: tài khoản đang chọn không đủ ETH để trả phí gas.';
+  if (all.includes('nonce')) hint = ' → GỢI Ý: MetaMask lệch nonce (hay gặp sau khi Ganache khởi động lại). Vào MetaMask > Settings > Advanced > Clear activity tab data.';
+  else if (all.includes('insufficient funds') || all.includes("doesn't have enough funds")) hint = ' → GỢI Ý: tài khoản đang chọn không đủ ETH để trả phí gas. Trên Sepolia, xin ETH miễn phí ở một "Sepolia faucet".';
   else if (all.includes('only the author')) hint = ' → GỢI Ý: tài khoản đang chọn không phải tác giả của bài này.';
   else if (all.includes('post is deleted')) hint = ' → GỢI Ý: bài viết này đã bị xóa.';
   else if (all.includes('revert')) hint = ' → GỢI Ý: hợp đồng từ chối giao dịch (kiểm tra quyền tác giả, độ dài tiêu đề/nội dung).';
@@ -375,6 +410,11 @@ async function connectWallet() {
     networkStatusDot.className = 'status-dot online';
     addLog(`Đã kết nối thành công với ví: ${userAccount}`, 'success');
 
+    // Có sẵn địa chỉ contract thì tự nạp luôn, người dùng không phải làm Bước 1
+    if (!contract && ethers.isAddress(contractAddressInput.value.trim())) {
+      await loadContract();
+    }
+
   } catch (error) {
     console.error(error);
     addLog(`Lỗi kết nối ví: ${error.message || error}`, 'error');
@@ -391,12 +431,12 @@ async function updateWalletInfo() {
     const ethBalance = parseFloat(ethers.formatEther(balance)).toFixed(4);
 
     const chainIdNow = Number(network.chainId);
-    if (chainIdNow !== GANACHE_CHAIN_ID) {
-      networkNameEl.textContent = `Chain ID: ${chainIdNow} - SAI MẠNG (cần Ganache ${GANACHE_CHAIN_ID})`;
+    if (chainIdNow !== NET.chainId) {
+      networkNameEl.textContent = `Chain ID: ${chainIdNow} - SAI MẠNG (cần ${NET.label} ${NET.chainId})`;
       networkStatusDot.className = 'status-dot offline';
-      addLog(`MetaMask đang ở Chain ID ${chainIdNow}, không phải Ganache (${GANACHE_CHAIN_ID}). Bấm "Chuyển sang Ganache" trước khi dùng.`, 'error');
+      addLog(`MetaMask đang ở Chain ID ${chainIdNow}, không phải ${NET.label} (${NET.chainId}). Bấm "Chuyển sang ${NET.label}" trước khi dùng.`, 'error');
     } else {
-      networkNameEl.textContent = `Chain ID: ${chainIdNow} (Ganache)`;
+      networkNameEl.textContent = `Chain ID: ${chainIdNow} (${NET.label})`;
     }
     walletAddressEl.textContent = `${userAccount.slice(0, 8)}...${userAccount.slice(-6)}`;
     walletBalanceEl.textContent = `${ethBalance} ETH`;
@@ -429,7 +469,7 @@ async function loadContract() {
     // (hay gặp khi Ganache bị reset hoặc MetaMask đang ở mạng khác)
     const code = await provider.getCode(address);
     if (code === '0x') {
-      addLog('Không có contract nào ở địa chỉ này trên mạng MetaMask đang chọn. Hãy kiểm tra lại địa chỉ (sau mỗi lần truffle migrate) và mạng Ganache.', 'error');
+      addLog(`Không có contract nào ở địa chỉ này trên mạng MetaMask đang chọn. Hãy kiểm tra lại địa chỉ (sau mỗi lần truffle migrate) và chắc chắn MetaMask đang ở mạng ${NET.label}.`, 'error');
       return;
     }
 
@@ -437,6 +477,7 @@ async function loadContract() {
     if (contract) await contract.removeAllListeners();
 
     contract = new ethers.Contract(address, CONTRACT_ABI, signer);
+    blockTimeCache.clear();
 
     contractStatusBox.className = 'contract-status-box active';
     contractStatusText.innerHTML = `✅ Đã kết nối Contract: <strong>${address.slice(0, 10)}...${address.slice(-6)}</strong>`;
@@ -476,15 +517,19 @@ async function loadPosts() {
     addLog('Đang gọi getPostCount() và getPost() từ Blockchain...', 'info');
     const count = Number(await contract.getPostCount());
 
-    const posts = [];
+    const all = [];
     for (let i = count - 1; i >= 0; i--) {
-      const p = await contract.getPost(i);
-      if (!p.deleted) posts.push(p); // bỏ qua bài đã xóa mềm
+      all.push(await contract.getPost(i));
     }
 
-    postCountDisplay.textContent = `${posts.length} bài (tổng đã đăng: ${count})`;
-    renderPosts(posts);
-    addLog(`Đọc thành công ${posts.length} bài viết từ Smart Contract.`, 'success');
+    const live = all.filter((p) => !p.deleted);
+    const shown = showDeletedChk.checked ? all : live; // bài xóa mềm chỉ hiện khi tick ô
+
+    postCountDisplay.textContent = `${live.length} bài đang hiển thị (tổng đã đăng: ${count}, đã xóa mềm: ${count - live.length})`;
+    renderPosts(shown);
+    addLog(`Đọc thành công ${shown.length} bài viết từ Smart Contract.`, 'success');
+
+    loadHistory(); // cập nhật bảng lịch sử giao dịch (không chờ)
   } catch (error) {
     console.error(error);
     addLog(`Lỗi khi đọc dữ liệu từ Contract: ${errorReason(error)}`, 'error');
@@ -505,11 +550,17 @@ function renderPosts(posts) {
 
   for (const p of posts) {
     const card = document.createElement('div');
-    card.className = 'display-box post-card';
+    card.className = 'display-box post-card' + (p.deleted ? ' post-deleted' : '');
 
     const title = document.createElement('div');
     title.className = 'post-title';
     title.textContent = `#${p.id} · ${p.title}`;
+    if (p.deleted) {
+      const badge = document.createElement('span');
+      badge.className = 'badge-deleted';
+      badge.textContent = 'ĐÃ XÓA MỀM';
+      title.appendChild(badge);
+    }
 
     const meta = document.createElement('div');
     meta.className = 'display-label';
@@ -522,11 +573,17 @@ function renderPosts(posts) {
 
     card.append(title, meta, content);
 
-    // Chỉ tác giả mới thấy nút Sửa / Xóa (contract cũng kiểm tra lại bằng onlyAuthor)
-    if (userAccount && p.author.toLowerCase() === userAccount.toLowerCase()) {
-      const actions = document.createElement('div');
-      actions.className = 'post-actions';
+    const actions = document.createElement('div');
+    actions.className = 'post-actions';
 
+    const detailBtn = document.createElement('button');
+    detailBtn.className = 'btn btn-outline';
+    detailBtn.textContent = '🔍 Chi tiết';
+    detailBtn.addEventListener('click', () => openPostDetail(p));
+    actions.appendChild(detailBtn);
+
+    // Chỉ tác giả mới thấy nút Sửa / Xóa, và chỉ với bài chưa xóa (contract cũng kiểm tra lại bằng onlyAuthor)
+    if (!p.deleted && userAccount && p.author.toLowerCase() === userAccount.toLowerCase()) {
       const editBtn = document.createElement('button');
       editBtn.className = 'btn btn-outline';
       editBtn.textContent = '✏️ Sửa';
@@ -538,10 +595,239 @@ function renderPosts(posts) {
       deleteBtn.addEventListener('click', () => deletePost(p.id));
 
       actions.append(editBtn, deleteBtn);
-      card.appendChild(actions);
     }
 
+    card.appendChild(actions);
     postsList.appendChild(card);
+  }
+}
+
+// ---------- Chi tiết bài viết & lịch sử giao dịch ----------
+
+const blockTimeCache = new Map();
+
+async function getBlockTime(blockNumber) {
+  if (blockTimeCache.has(blockNumber)) return blockTimeCache.get(blockNumber);
+  const b = await provider.getBlock(blockNumber);
+  const t = b ? Number(b.timestamp) : 0;
+  blockTimeCache.set(blockNumber, t);
+  return t;
+}
+
+function shortHash(h) {
+  return `${h.slice(0, 10)}...${h.slice(-6)}`;
+}
+
+function copyText(text, label) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text)
+      .then(() => addLog(`Đã sao chép ${label}: ${text}`, 'success'))
+      .catch(() => addLog(`${label}: ${text}`, 'info'));
+  } else {
+    addLog(`${label}: ${text}`, 'info');
+  }
+}
+
+// Mã giao dịch bấm vào để sao chép
+function hashSpan(hash) {
+  const el = document.createElement('span');
+  el.className = 'hash-chip mono';
+  el.textContent = shortHash(hash);
+  el.title = `${hash} (bấm để sao chép)`;
+  el.addEventListener('click', () => copyText(hash, 'mã giao dịch'));
+  return el;
+}
+
+// Đọc lại tiêu đề + nội dung đã gửi trong một giao dịch (dữ liệu vẫn nằm trong lịch sử chuỗi)
+async function readTxContent(hash) {
+  try {
+    const tx = await provider.getTransaction(hash);
+    const parsed = contract.interface.parseTransaction({ data: tx.data });
+    if (!parsed) return null;
+    const a = parsed.args;
+    if (parsed.name === 'createPost') return { title: a[0], content: a[1] };
+    if (parsed.name === 'editPost') return { title: a[1], content: a[2] };
+  } catch (e) {
+    console.warn('Không giải mã được giao dịch', hash, e);
+  }
+  return null;
+}
+
+function detailField(label, valueNode) {
+  const row = document.createElement('div');
+  row.className = 'detail-row';
+  const l = document.createElement('span');
+  l.className = 'detail-label';
+  l.textContent = label;
+  const v = document.createElement('span');
+  v.className = 'detail-value';
+  if (typeof valueNode === 'string') v.textContent = valueNode;
+  else v.appendChild(valueNode);
+  row.append(l, v);
+  return row;
+}
+
+function versionBlock(heading, ev, when, content) {
+  const box = document.createElement('div');
+  box.className = 'version-box';
+  const h = document.createElement('div');
+  h.className = 'version-head';
+  h.append(document.createTextNode(`${heading} · ${formatTime(when)} · khối #${ev.blockNumber} · bởi ${shortAddr(ev.args.author)} · `));
+  h.appendChild(hashSpan(ev.transactionHash));
+  box.appendChild(h);
+  const body = document.createElement('div');
+  body.className = 'version-body';
+  if (content) {
+    const t = document.createElement('div');
+    t.className = 'post-title';
+    t.textContent = content.title;
+    const c = document.createElement('div');
+    c.className = 'post-content';
+    c.textContent = content.content;
+    body.append(t, c);
+  } else {
+    body.textContent = '(Không đọc lại được nội dung của giao dịch này)';
+  }
+  box.appendChild(body);
+  return box;
+}
+
+async function openPostDetail(p) {
+  detailBody.innerHTML = '';
+  detailTitle.textContent = `#${p.id} · ${p.title}`;
+  detailModal.classList.add('open');
+
+  const loading = document.createElement('div');
+  loading.className = 'display-content';
+  loading.textContent = 'Đang đọc lịch sử từ blockchain...';
+  detailBody.appendChild(loading);
+
+  try {
+    const id = BigInt(p.id);
+    const [created, edited, deleted] = await Promise.all([
+      contract.queryFilter(contract.filters.PostCreated(id), NET.deployBlock, 'latest'),
+      contract.queryFilter(contract.filters.PostEdited(id), NET.deployBlock, 'latest'),
+      contract.queryFilter(contract.filters.PostDeleted(id), NET.deployBlock, 'latest'),
+    ]);
+
+    detailBody.innerHTML = '';
+
+    detailBody.appendChild(detailField('Mã bài (id)', String(p.id)));
+    const full = document.createElement('span');
+    full.className = 'mono';
+    full.textContent = p.author;
+    detailBody.appendChild(detailField('Tác giả (địa chỉ ví)', full));
+    detailBody.appendChild(detailField('Đăng lúc', formatTime(p.createdAt)));
+    detailBody.appendChild(detailField('Sửa lần cuối', p.updatedAt !== p.createdAt ? formatTime(p.updatedAt) : 'Chưa sửa'));
+    detailBody.appendChild(detailField('Trạng thái', p.deleted ? 'Đã xóa mềm (dữ liệu vẫn nằm trên chuỗi)' : 'Đang hiển thị'));
+    detailBody.appendChild(detailField('Số lần sửa', String(edited.length)));
+
+    const h = document.createElement('div');
+    h.className = 'detail-section';
+    h.textContent = 'Nội dung hiện tại';
+    detailBody.appendChild(h);
+    const cur = document.createElement('div');
+    cur.className = 'post-content';
+    cur.textContent = p.content;
+    detailBody.appendChild(cur);
+
+    const h2 = document.createElement('div');
+    h2.className = 'detail-section';
+    h2.textContent = 'Lịch sử các phiên bản (đọc từ giao dịch trên chuỗi)';
+    detailBody.appendChild(h2);
+
+    for (const ev of created) {
+      const content = await readTxContent(ev.transactionHash);
+      detailBody.appendChild(versionBlock('Bản gốc (đăng bài)', ev, Number(ev.args.createdAt), content));
+    }
+    let k = 1;
+    for (const ev of edited) {
+      const content = await readTxContent(ev.transactionHash);
+      detailBody.appendChild(versionBlock(`Sửa lần ${k}`, ev, Number(ev.args.updatedAt), content));
+      k++;
+    }
+    for (const ev of deleted) {
+      const t = await getBlockTime(ev.blockNumber);
+      const box = document.createElement('div');
+      box.className = 'version-box';
+      const hd = document.createElement('div');
+      hd.className = 'version-head';
+      hd.append(document.createTextNode(`Xóa mềm · ${formatTime(t)} · khối #${ev.blockNumber} · bởi ${shortAddr(ev.args.author)} · `));
+      hd.appendChild(hashSpan(ev.transactionHash));
+      box.appendChild(hd);
+      detailBody.appendChild(box);
+    }
+  } catch (error) {
+    console.error(error);
+    detailBody.innerHTML = '';
+    const err = document.createElement('div');
+    err.className = 'display-content';
+    err.textContent = `Không đọc được lịch sử: ${errorReason(error)}`;
+    detailBody.appendChild(err);
+  }
+}
+
+function closeDetail() {
+  detailModal.classList.remove('open');
+}
+
+// Bảng lịch sử mọi giao dịch của blog (đăng, sửa, xóa) lấy từ sự kiện trên chuỗi
+async function loadHistory() {
+  if (!contract || !provider) return;
+  try {
+    const [created, edited, deleted] = await Promise.all([
+      contract.queryFilter(contract.filters.PostCreated(), NET.deployBlock, 'latest'),
+      contract.queryFilter(contract.filters.PostEdited(), NET.deployBlock, 'latest'),
+      contract.queryFilter(contract.filters.PostDeleted(), NET.deployBlock, 'latest'),
+    ]);
+
+    const rows = [
+      ...created.map((e) => ({ type: 'Đăng bài', ev: e, when: Number(e.args.createdAt) })),
+      ...edited.map((e) => ({ type: 'Sửa bài', ev: e, when: Number(e.args.updatedAt) })),
+      ...deleted.map((e) => ({ type: 'Xóa mềm', ev: e, when: 0 })),
+    ];
+    rows.sort((a, b) => (b.ev.blockNumber - a.ev.blockNumber) || ((b.ev.index ?? 0) - (a.ev.index ?? 0)));
+
+    for (const r of rows) {
+      if (!r.when) r.when = await getBlockTime(r.ev.blockNumber);
+    }
+
+    historyList.innerHTML = '';
+    if (rows.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'display-content';
+      empty.textContent = 'Chưa có giao dịch nào của blog.';
+      historyList.appendChild(empty);
+      return;
+    }
+
+    const table = document.createElement('table');
+    table.className = 'history-table';
+    const head = document.createElement('tr');
+    for (const t of ['Loại', 'Bài', 'Người thực hiện', 'Thời gian', 'Khối', 'Mã giao dịch']) {
+      const th = document.createElement('th');
+      th.textContent = t;
+      head.appendChild(th);
+    }
+    table.appendChild(head);
+
+    for (const r of rows.slice(0, 100)) {
+      const tr = document.createElement('tr');
+      const cells = [r.type, `#${r.ev.args.id}`, shortAddr(r.ev.args.author), formatTime(r.when), `#${r.ev.blockNumber}`];
+      for (const c of cells) {
+        const td = document.createElement('td');
+        td.textContent = c;
+        tr.appendChild(td);
+      }
+      const tdHash = document.createElement('td');
+      tdHash.appendChild(hashSpan(r.ev.transactionHash));
+      tr.appendChild(tdHash);
+      table.appendChild(tr);
+    }
+    historyList.appendChild(table);
+  } catch (error) {
+    console.error(error);
+    addLog(`Lỗi khi đọc lịch sử giao dịch: ${errorReason(error)}`, 'error');
   }
 }
 
@@ -570,9 +856,10 @@ function resetForm() {
 async function sendTx(label, txPromise) {
   const tx = await txPromise;
   addLog(`Giao dịch ${label} đã được phát đi! TX Hash: ${tx.hash}`, 'info');
+  if (NET.explorer) addLog(`Xem trên trình duyệt khối: ${NET.explorer}/tx/${tx.hash}`, 'info');
   submitPostBtn.textContent = '⛏️ Đang xác thực Block (Mining)...';
 
-  // Chờ giao dịch được đóng gói vào Block trên Ganache
+  // Chờ giao dịch được đóng gói vào Block (Sepolia mất khoảng 12-30 giây)
   const receipt = await tx.wait();
   addLog(`✅ Giao dịch thành công trong Block #${receipt.blockNumber}! Gas sử dụng: ${receipt.gasUsed.toString()}`, 'success');
 
@@ -649,11 +936,22 @@ async function deletePost(id) {
   }
 }
 
+// Hiển thị tên mạng và điền sẵn địa chỉ contract theo NET
+document.getElementById('switchNetworkBtn').textContent = `🔀 Chuyển sang ${NET.label}`;
+document.getElementById('networkSubtitle').textContent = `Tương tác Smart Contract trên mạng ${NET.label}`;
+if (NET.contractAddress) contractAddressInput.value = NET.contractAddress;
+addLog(`Sẵn sàng. DApp dùng mạng ${NET.label} (Chain ID ${NET.chainId}). Bấm "Kết nối MetaMask" để bắt đầu.`, 'info');
+
 // Event Listeners
 connectWalletBtn.addEventListener('click', connectWallet);
-document.getElementById('switchNetworkBtn').addEventListener('click', switchToGanache);
+document.getElementById('switchNetworkBtn').addEventListener('click', switchNetwork);
 loadContractBtn.addEventListener('click', loadContract);
 refreshPostsBtn.addEventListener('click', loadPosts);
+showDeletedChk.addEventListener('change', loadPosts);
+refreshHistoryBtn.addEventListener('click', loadHistory);
+detailCloseBtn.addEventListener('click', closeDetail);
+detailModal.addEventListener('click', (e) => { if (e.target === detailModal) closeDetail(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDetail(); });
 submitPostBtn.addEventListener('click', submitPost);
 cancelEditBtn.addEventListener('click', resetForm);
 clearLogsBtn.addEventListener('click', () => {
