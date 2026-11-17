@@ -1,253 +1,9 @@
-// BlogChain ABI (lấy từ blogchain-truffle/build/contracts/BlogChain.json sau khi chạy truffle migrate)
-const CONTRACT_ABI = [
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "uint256",
-        "name": "id",
-        "type": "uint256"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "author",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "string",
-        "name": "title",
-        "type": "string"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "createdAt",
-        "type": "uint256"
-      }
-    ],
-    "name": "PostCreated",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "uint256",
-        "name": "id",
-        "type": "uint256"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "author",
-        "type": "address"
-      }
-    ],
-    "name": "PostDeleted",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "uint256",
-        "name": "id",
-        "type": "uint256"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "author",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "updatedAt",
-        "type": "uint256"
-      }
-    ],
-    "name": "PostEdited",
-    "type": "event"
-  },
-  {
-    "inputs": [],
-    "name": "MAX_CONTENT_LENGTH",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "MAX_TITLE_LENGTH",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "title",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "content",
-        "type": "string"
-      }
-    ],
-    "name": "createPost",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "id",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "id",
-        "type": "uint256"
-      },
-      {
-        "internalType": "string",
-        "name": "title",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "content",
-        "type": "string"
-      }
-    ],
-    "name": "editPost",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "id",
-        "type": "uint256"
-      }
-    ],
-    "name": "deletePost",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getPostCount",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "id",
-        "type": "uint256"
-      }
-    ],
-    "name": "getPost",
-    "outputs": [
-      {
-        "components": [
-          {
-            "internalType": "uint256",
-            "name": "id",
-            "type": "uint256"
-          },
-          {
-            "internalType": "address",
-            "name": "author",
-            "type": "address"
-          },
-          {
-            "internalType": "string",
-            "name": "title",
-            "type": "string"
-          },
-          {
-            "internalType": "string",
-            "name": "content",
-            "type": "string"
-          },
-          {
-            "internalType": "uint256",
-            "name": "createdAt",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "updatedAt",
-            "type": "uint256"
-          },
-          {
-            "internalType": "bool",
-            "name": "deleted",
-            "type": "bool"
-          }
-        ],
-        "internalType": "struct BlogChain.Post",
-        "name": "",
-        "type": "tuple"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  }
-];
-
-// Payments ABI (dạng chữ dễ đọc mà ethers v6 hiểu được; khớp với contracts/Payments.sol)
-const PAYMENTS_ABI = [
-  'event Transferred(uint256 indexed id, address indexed from, address indexed to, uint256 amount, string note, uint256 sentAt)',
-  'function sendEth(address to, string note) payable returns (uint256 id)',
-  'function transferCount() view returns (uint256)'
-];
-
-// DocumentRegistry ABI (khớp với contracts/DocumentRegistry.sol)
-const DOCS_ABI = [
-  'event DocumentRegistered(bytes32 indexed docHash, address indexed issuer, string title, uint256 registeredAt)',
-  'event DocumentRevoked(bytes32 indexed docHash, address indexed issuer, uint256 revokedAt)',
-  'function register(bytes32 docHash, string title)',
-  'function revoke(bytes32 docHash)',
-  'function verify(bytes32 docHash) view returns (bool registered, address issuer, uint256 registeredAt, bool revoked)',
-  'function documentCount() view returns (uint256)'
-];
+// ABI và địa chỉ của các contract được nạp từ contracts.json (xem loadContractsConfig).
+// File này do lệnh "npm run export" trong blogchain-truffle tạo ra từ kết quả biên dịch của Truffle,
+// nên sau mỗi lần deploy không phải chép tay ABI / địa chỉ vào đây nữa.
+let CONTRACT_ABI = null; // BlogChain
+let PAYMENTS_ABI = null; // Payments
+let DOCS_ABI = null; // DocumentRegistry
 
 // State Variables
 let provider = null;
@@ -339,18 +95,20 @@ const WAIT_SIGN_TEXT = 'Đang chờ ký trong MetaMask...';
 const WAIT_MINED_TEXT = 'Đang chờ xác nhận trên blockchain...';
 
 // Các mạng DApp hỗ trợ.
-//  - contractAddress: địa chỉ BlogChain trên mạng đó (in ra khi chạy truffle migrate), để trống thì người dùng tự dán.
-//  - deployBlock: số block lúc deploy contract; đọc lịch sử sự kiện từ block này thay vì từ 0 cho nhanh.
+//  - artifactNetworkId: id mạng mà Truffle ghi trong build/contracts (khóa "networks" của contracts.json).
+//  - Địa chỉ contract (contractAddress, paymentsAddress, docsAddress) và số block lúc deploy (…DeployBlock)
+//    được điền từ contracts.json khi mở trang; để trống nghĩa là contract chưa deploy trên mạng đó.
 const NETWORKS = {
   sepolia: {
     chainId: 11155111,
+    artifactNetworkId: '11155111',
     label: 'Sepolia Testnet',
-    contractAddress: '0x1b59c8aAAa7a258eafe7c708Fc27b6d4e2a7e7F0', // in ra khi chạy: truffle migrate --network sepolia
-    deployBlock: 12146786, // dòng "block number" của BlogChain khi deploy
-    paymentsAddress: '0xaDBF8d7370383A83Eef6d3844b30f285Fc9f7e1c', // contract Payments (3_deploy_payments.js)
-    paymentsDeployBlock: 12151014,
-    docsAddress: '0xb6a99853dC40129d69D3A0e27438Fd4305A9654A', // contract DocumentRegistry (4_deploy_document_registry.js)
-    docsDeployBlock: 12151675,
+    contractAddress: '',
+    deployBlock: 0,
+    paymentsAddress: '',
+    paymentsDeployBlock: 0,
+    docsAddress: '',
+    docsDeployBlock: 0,
     priorityFeeGwei: '0.05', // tip trả cho validator, xem feeOverrides()
     readRpc: 'https://ethereum-sepolia-rpc.publicnode.com', // RPC công khai để ai cũng đọc được, không cần ví
     explorer: 'https://sepolia.etherscan.io',
@@ -364,6 +122,7 @@ const NETWORKS = {
   },
   ganache: {
     chainId: 1337,
+    artifactNetworkId: '5777', // Ganache GUI
     label: 'Ganache Local',
     contractAddress: '',
     deployBlock: 0,
@@ -385,6 +144,22 @@ const NETWORKS = {
 
 // Mạng đang dùng. Chạy thử trên máy với Ganache thì đổi thành NETWORKS.ganache
 const NET = NETWORKS.sepolia;
+
+// Nạp ABI + địa chỉ contract từ contracts.json (do "npm run export" tạo ra) và điền vào NET
+const CONTRACTS_JSON_URL = 'contracts.json?v=1';
+
+async function loadContractsConfig() {
+  const res = await fetch(CONTRACTS_JSON_URL, { cache: 'no-cache' });
+  if (!res.ok) throw new Error(`không tải được contracts.json (HTTP ${res.status})`);
+  const cfg = await res.json();
+  CONTRACT_ABI = cfg.abi.BlogChain;
+  PAYMENTS_ABI = cfg.abi.Payments;
+  DOCS_ABI = cfg.abi.DocumentRegistry;
+  const deployed = cfg.networks[NET.artifactNetworkId] || {};
+  if (deployed.BlogChain) Object.assign(NET, { contractAddress: deployed.BlogChain.address, deployBlock: deployed.BlogChain.deployBlock });
+  if (deployed.Payments) Object.assign(NET, { paymentsAddress: deployed.Payments.address, paymentsDeployBlock: deployed.Payments.deployBlock });
+  if (deployed.DocumentRegistry) Object.assign(NET, { docsAddress: deployed.DocumentRegistry.address, docsDeployBlock: deployed.DocumentRegistry.deployBlock });
+}
 
 // Provider chỉ để ĐỌC dữ liệu qua RPC công khai: ai mở trang cũng xem được bài viết và lịch sử, không cần MetaMask.
 // Ghi dữ liệu (đăng bài, chuyển tiền) vẫn phải ký bằng ví qua `signer`.
@@ -1872,7 +1647,6 @@ async function loadDocuments() {
 // Hiển thị tên mạng và điền sẵn địa chỉ contract theo NET
 switchNetworkBtn.querySelector('span').textContent = `Chuyển sang ${NET.label}`;
 document.getElementById('networkSubtitle').textContent = `Mọi bài viết và giao dịch được ghi công khai trên mạng ${NET.label}, không thể sửa lén.`;
-if (NET.contractAddress) contractAddressInput.value = NET.contractAddress;
 addLog(`Sẵn sàng. DApp dùng mạng ${NET.label} (Chain ID ${NET.chainId}). Xem bài viết và lịch sử không cần ví; muốn đăng bài hoặc chuyển tiền thì bấm "Kết nối ví MetaMask".`, 'info');
 
 // Mở lại thẻ chức năng lần trước (nếu có)
@@ -1970,6 +1744,14 @@ if (window.ethereum) {
 
 // Mở trang là đọc dữ liệu ngay qua RPC công khai, chưa cần kết nối ví
 (async () => {
+  try {
+    await loadContractsConfig();
+  } catch (error) {
+    console.error(error);
+    addLog(`Không nạp được cấu hình contract: ${error.message || error}. Hãy tải lại trang.`, 'error');
+    return;
+  }
+  if (NET.contractAddress) contractAddressInput.value = NET.contractAddress;
   // Nạp 3 contract cùng lúc thay vì lần lượt (RPC công khai chậm, nạp lần lượt mất ~8 giây)
   await Promise.all([NET.contractAddress ? loadContract() : null, initPayments(), initDocs()]);
   setInterval(pollNewEvents, POLL_MS);

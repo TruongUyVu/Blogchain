@@ -5,8 +5,9 @@
   "description": "Hợp đồng BlogChain (Truffle) - chạy cục bộ với Ganache hoặc deploy lên testnet Sepolia",
   "scripts": {
     "test": "truffle test",
-    "deploy:ganache": "truffle migrate --reset",
-    "deploy:sepolia": "truffle migrate --network sepolia"
+    "deploy:ganache": "truffle migrate --reset && node scripts/export-contracts.js",
+    "deploy:sepolia": "truffle migrate --network sepolia && node scripts/export-contracts.js",
+    "export": "node scripts/export-contracts.js"
   },
   "dependencies": {
     "@truffle/hdwallet-provider": "^2.1.15",
