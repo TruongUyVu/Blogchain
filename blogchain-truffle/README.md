@@ -8,12 +8,15 @@ Project blog cơ bản trên blockchain để thực hành. Chạy hoàn toàn t
 blogchain-truffle/
 ├── contracts/
 │   ├── Migrations.sol        # contract chuẩn của Truffle
-│   └── BlogChain.sol         # contract blog: đăng, sửa, xóa mềm, đọc bài
+│   ├── BlogChain.sol         # contract blog: đăng, sửa, xóa mềm, đọc bài
+│   └── Payments.sol          # chuyển ETH giữa các ví kèm ghi chú, phát sự kiện Transferred
 ├── migrations/
 │   ├── 1_initial_migration.js
-│   └── 2_deploy_blogchain.js # deploy BlogChain
+│   ├── 2_deploy_blogchain.js # deploy BlogChain
+│   └── 3_deploy_payments.js  # deploy Payments
 ├── test/
-│   └── blogchain.test.js     # 9 test tự động
+│   ├── blogchain.test.js     # 9 test tự động
+│   └── payments.test.js      # 6 test tự động
 └── truffle-config.js         # kết nối Ganache 127.0.0.1:7545, solc 0.8.19
 ```
 
@@ -63,7 +66,9 @@ npm install
 truffle migrate --network sepolia
 ```
 
-5. Dán địa chỉ contract `BlogChain` và số block lúc deploy vào `NETWORKS.sepolia` (`contractAddress`, `deployBlock`) trong `dapp/app.js`.
+5. Dán địa chỉ contract và số block lúc deploy vào `NETWORKS.sepolia` trong `dapp/app.js`:
+   `BlogChain` → `contractAddress`, `deployBlock`; `Payments` → `paymentsAddress`, `paymentsDeployBlock`.
+   Chỉ deploy thêm một contract mới (ví dụ Payments) mà không đụng BlogChain: `truffle migrate -f 3 --to 3 --network sepolia`.
 6. Commit, push, rồi bật GitHub Pages (Settings → Pages → nhánh `main`). Link DApp:
    `https://truonguyvu.github.io/Blogchain/dapp/`
 

@@ -232,10 +232,18 @@ const CONTRACT_ABI = [
   }
 ];
 
+// Payments ABI (dạng chữ dễ đọc mà ethers v6 hiểu được; khớp với contracts/Payments.sol)
+const PAYMENTS_ABI = [
+  'event Transferred(uint256 indexed id, address indexed from, address indexed to, uint256 amount, string note, uint256 sentAt)',
+  'function sendEth(address to, string note) payable returns (uint256 id)',
+  'function transferCount() view returns (uint256)'
+];
+
 // State Variables
 let provider = null;
 let signer = null;
 let contract = null;
+let payments = null; // contract Payments (chuyển tiền)
 let userAccount = null;
 let editingPostId = null; // null = đang đăng bài mới, số = đang sửa bài có id đó
 
@@ -273,7 +281,19 @@ const detailTitle = document.getElementById('detailTitle');
 const detailBody = document.getElementById('detailBody');
 const detailCloseBtn = document.getElementById('detailCloseBtn');
 
+const transferToInput = document.getElementById('transferToInput');
+const transferAmountInput = document.getElementById('transferAmountInput');
+const transferNoteInput = document.getElementById('transferNoteInput');
+const sendTransferBtn = document.getElementById('sendTransferBtn');
+const transfersList = document.getElementById('transfersList');
+const myTransfersChk = document.getElementById('myTransfersChk');
+const refreshTransfersBtn = document.getElementById('refreshTransfersBtn');
+const txLookupInput = document.getElementById('txLookupInput');
+const txLookupBtn = document.getElementById('txLookupBtn');
+const txLookupResult = document.getElementById('txLookupResult');
+
 const SUBMIT_TEXT_CREATE = '✍️ Đăng bài lên Blockchain (Gửi giao dịch)';
+const TRANSFER_TEXT = '💸 Chuyển tiền (Gửi giao dịch)';
 const SUBMIT_TEXT_EDIT = '💾 Lưu chỉnh sửa (Gửi giao dịch)';
 
 // Các mạng DApp hỗ trợ.
@@ -285,6 +305,8 @@ const NETWORKS = {
     label: 'Sepolia Testnet',
     contractAddress: '0x1b59c8aAAa7a258eafe7c708Fc27b6d4e2a7e7F0', // in ra khi chạy: truffle migrate --network sepolia
     deployBlock: 12146786, // dòng "block number" của BlogChain khi deploy
+    paymentsAddress: '0xaDBF8d7370383A83Eef6d3844b30f285Fc9f7e1c', // contract Payments (3_deploy_payments.js)
+    paymentsDeployBlock: 12151014,
     explorer: 'https://sepolia.etherscan.io',
     params: {
       chainId: '0xaa36a7',
@@ -299,6 +321,8 @@ const NETWORKS = {
     label: 'Ganache Local',
     contractAddress: '',
     deployBlock: 0,
+    paymentsAddress: '',
+    paymentsDeployBlock: 0,
     explorer: null,
     params: {
       chainId: '0x539',
@@ -414,6 +438,7 @@ async function connectWallet() {
     if (!contract && ethers.isAddress(contractAddressInput.value.trim())) {
       await loadContract();
     }
+    await initPayments();
 
   } catch (error) {
     console.error(error);
@@ -936,6 +961,268 @@ async function deletePost(id) {
   }
 }
 
+// ---------- Chuyển tiền (contract Payments) & tra cứu giao dịch ----------
+
+// Mã giao dịch bấm vào để xem chi tiết ở ô Tra cứu
+function txChip(hash) {
+  const el = document.createElement('span');
+  el.className = 'hash-chip mono';
+  el.textContent = shortHash(hash);
+  el.title = `${hash} (bấm để xem chi tiết)`;
+  el.addEventListener('click', () => {
+    txLookupInput.value = hash;
+    txLookupInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    lookupTx();
+  });
+  return el;
+}
+
+// Địa chỉ ví rút gọn, thêm "(bạn)" nếu là ví đang kết nối
+function addrLabel(addr) {
+  const mine = userAccount && addr.toLowerCase() === userAccount.toLowerCase();
+  return `${shortAddr(addr)}${mine ? ' (bạn)' : ''}`;
+}
+
+// Nạp contract Payments (gọi sau khi kết nối ví)
+async function initPayments() {
+  if (payments) return;
+  if (!NET.paymentsAddress) {
+    transfersList.innerHTML = `<div class="display-content">Contract Payments chưa được deploy trên mạng ${NET.label}.</div>`;
+    return;
+  }
+  try {
+    const code = await provider.getCode(NET.paymentsAddress);
+    if (code === '0x') {
+      addLog(`Không tìm thấy contract Payments trên mạng MetaMask đang chọn. Hãy chuyển sang ${NET.label}.`, 'error');
+      return;
+    }
+    payments = new ethers.Contract(NET.paymentsAddress, PAYMENTS_ABI, signer);
+    addLog('Đã nạp contract Payments (chuyển tiền).', 'success');
+    await loadTransfers();
+
+    payments.on('Transferred', (id, from, to, amount) => {
+      addLog(`⚡ [Event Transferred] ${shortAddr(from)} → ${shortAddr(to)}: ${ethers.formatEther(amount)} ETH`, 'success');
+      loadTransfers();
+    });
+  } catch (error) {
+    console.error(error);
+    addLog(`Không nạp được contract Payments: ${errorReason(error)}`, 'error');
+  }
+}
+
+// Chuyển ETH qua contract Payments (Requires Gas & MetaMask Sign)
+async function sendTransfer() {
+  if (!payments) {
+    addLog('Chưa nạp contract Payments. Hãy kết nối MetaMask (đúng mạng) trước.', 'warn');
+    return;
+  }
+
+  const to = transferToInput.value.trim();
+  const amountText = transferAmountInput.value.trim().replace(',', '.');
+  const note = transferNoteInput.value.trim();
+
+  if (!ethers.isAddress(to)) {
+    alert('Địa chỉ ví người nhận không hợp lệ (0x...)');
+    return;
+  }
+  if (to.toLowerCase() === userAccount.toLowerCase()) {
+    alert('Không thể tự chuyển cho chính mình!');
+    return;
+  }
+  let value;
+  try {
+    value = ethers.parseEther(amountText);
+  } catch {
+    alert('Số tiền không hợp lệ. Ví dụ: 0.001');
+    return;
+  }
+  if (value <= 0n) {
+    alert('Số tiền phải lớn hơn 0!');
+    return;
+  }
+  if (new TextEncoder().encode(note).length > 200) {
+    alert('Ghi chú tối đa 200 byte!');
+    return;
+  }
+  if (!confirm(`Chuyển ${ethers.formatEther(value)} ETH tới ${to}?\nGiao dịch trên blockchain không thể hoàn tác.`)) return;
+
+  try {
+    sendTransferBtn.disabled = true;
+    sendTransferBtn.textContent = '⏳ Đang chờ ký MetaMask...';
+    addLog(`Chuẩn bị gửi giao dịch sendEth(${shortAddr(to)}) kèm ${ethers.formatEther(value)} ETH...`, 'info');
+
+    const tx = await payments.connect(signer).sendEth(to, note, { value });
+    addLog(`Giao dịch chuyển tiền đã được phát đi! TX Hash: ${tx.hash}`, 'info');
+    if (NET.explorer) addLog(`Xem trên trình duyệt khối: ${NET.explorer}/tx/${tx.hash}`, 'info');
+    sendTransferBtn.textContent = '⛏️ Đang xác thực Block (Mining)...';
+
+    const receipt = await tx.wait();
+    addLog(`✅ Đã chuyển ${ethers.formatEther(value)} ETH tới ${shortAddr(to)} trong Block #${receipt.blockNumber}!`, 'success');
+
+    transferAmountInput.value = '';
+    transferNoteInput.value = '';
+    await updateWalletInfo();
+    await loadTransfers();
+  } catch (error) {
+    handleTxError(error);
+  } finally {
+    sendTransferBtn.disabled = false;
+    sendTransferBtn.textContent = TRANSFER_TEXT;
+  }
+}
+
+// Bảng lịch sử chuyển tiền lấy từ sự kiện Transferred trên chuỗi
+async function loadTransfers() {
+  if (!payments) return;
+  try {
+    let events = await payments.queryFilter(payments.filters.Transferred(), NET.paymentsDeployBlock, 'latest');
+    if (myTransfersChk.checked && userAccount) {
+      const me = userAccount.toLowerCase();
+      events = events.filter((e) => e.args.from.toLowerCase() === me || e.args.to.toLowerCase() === me);
+    }
+    events.sort((a, b) => (b.blockNumber - a.blockNumber) || ((b.index ?? 0) - (a.index ?? 0)));
+
+    transfersList.innerHTML = '';
+    if (events.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'display-content';
+      empty.textContent = myTransfersChk.checked ? 'Ví của bạn chưa có giao dịch chuyển tiền nào.' : 'Chưa có giao dịch chuyển tiền nào.';
+      transfersList.appendChild(empty);
+      return;
+    }
+
+    const table = document.createElement('table');
+    table.className = 'history-table';
+    const head = document.createElement('tr');
+    for (const t of ['#', 'Thời gian', 'Người gửi', 'Người nhận', 'Số tiền', 'Ghi chú', 'Mã giao dịch']) {
+      const th = document.createElement('th');
+      th.textContent = t;
+      head.appendChild(th);
+    }
+    table.appendChild(head);
+
+    for (const e of events.slice(0, 100)) {
+      const tr = document.createElement('tr');
+      const cells = [
+        `#${e.args.id}`,
+        formatTime(e.args.sentAt),
+        addrLabel(e.args.from),
+        addrLabel(e.args.to),
+        `${ethers.formatEther(e.args.amount)} ETH`,
+        e.args.note || '—',
+      ];
+      cells.forEach((c, i) => {
+        const td = document.createElement('td');
+        td.textContent = c;
+        if (i === 2) td.title = e.args.from;
+        if (i === 3) td.title = e.args.to;
+        if (i === 4) td.className = 'amount-cell';
+        tr.appendChild(td);
+      });
+      const tdHash = document.createElement('td');
+      tdHash.appendChild(txChip(e.transactionHash));
+      tr.appendChild(tdHash);
+      table.appendChild(tr);
+    }
+    transfersList.appendChild(table);
+  } catch (error) {
+    console.error(error);
+    addLog(`Lỗi khi đọc lịch sử chuyển tiền: ${errorReason(error)}`, 'error');
+  }
+}
+
+// Tra cứu một giao dịch bất kỳ theo mã (kể cả chuyển ETH trực tiếp bằng MetaMask)
+async function lookupTx() {
+  const hash = txLookupInput.value.trim();
+  if (!/^0x[0-9a-fA-F]{64}$/.test(hash)) {
+    alert('Mã giao dịch phải có dạng 0x + 64 ký tự (0-9, a-f).');
+    return;
+  }
+  if (!provider) {
+    addLog('Hãy kết nối MetaMask trước khi tra cứu giao dịch.', 'warn');
+    return;
+  }
+
+  txLookupResult.innerHTML = '<div class="display-content">Đang tra cứu trên blockchain...</div>';
+  try {
+    const [tx, receipt] = await Promise.all([provider.getTransaction(hash), provider.getTransactionReceipt(hash)]);
+    txLookupResult.innerHTML = '';
+    if (!tx) {
+      const nf = document.createElement('div');
+      nf.className = 'display-content';
+      nf.textContent = `Không tìm thấy giao dịch này trên mạng ${NET.label}.`;
+      txLookupResult.appendChild(nf);
+      return;
+    }
+
+    // Đoán loại giao dịch; nếu đi qua Payments thì lấy người nhận + ghi chú từ dữ liệu gọi hàm
+    const target = (tx.to || '').toLowerCase();
+    let kind = tx.data && tx.data !== '0x' ? 'Gọi smart contract' : 'Chuyển ETH trực tiếp (ví → ví)';
+    let to = tx.to;
+    let note = null;
+    if (NET.paymentsAddress && target === NET.paymentsAddress.toLowerCase()) {
+      kind = 'Chuyển tiền qua contract Payments';
+      const parsed = payments ? payments.interface.parseTransaction({ data: tx.data, value: tx.value }) : null;
+      if (parsed) {
+        to = parsed.args[0];
+        note = parsed.args[1];
+      }
+    } else if (NET.contractAddress && target === NET.contractAddress.toLowerCase()) {
+      kind = 'Thao tác blog (BlogChain)';
+    } else if (!tx.to) {
+      kind = 'Deploy smart contract';
+    }
+
+    const status = document.createElement('span');
+    if (!receipt) {
+      status.textContent = '⏳ Đang chờ xác nhận';
+    } else if (receipt.status === 1) {
+      status.textContent = '✅ Thành công';
+      status.className = 'tx-status-ok';
+    } else {
+      status.textContent = '❌ Thất bại (bị revert)';
+      status.className = 'tx-status-fail';
+    }
+
+    const amount = document.createElement('span');
+    amount.className = 'amount-cell';
+    amount.textContent = `${ethers.formatEther(tx.value)} ETH`;
+
+    const fromEl = document.createElement('span');
+    fromEl.className = 'mono';
+    fromEl.textContent = tx.from;
+    const toEl = document.createElement('span');
+    toEl.className = 'mono';
+    toEl.textContent = to || '(không có - tạo contract)';
+
+    txLookupResult.appendChild(detailField('Loại', kind));
+    txLookupResult.appendChild(detailField('Trạng thái', status));
+    txLookupResult.appendChild(detailField('Người gửi', fromEl));
+    txLookupResult.appendChild(detailField('Người nhận', toEl));
+    txLookupResult.appendChild(detailField('Số tiền', amount));
+    if (note !== null) txLookupResult.appendChild(detailField('Ghi chú', note || '—'));
+    if (receipt) {
+      txLookupResult.appendChild(detailField('Khối', `#${receipt.blockNumber} · ${formatTime(await getBlockTime(receipt.blockNumber))}`));
+      txLookupResult.appendChild(detailField('Phí gas', `${ethers.formatEther(receipt.fee)} ETH (${receipt.gasUsed} gas)`));
+    }
+    if (NET.explorer) {
+      const a = document.createElement('a');
+      a.href = `${NET.explorer}/tx/${hash}`;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.textContent = 'Mở trên Etherscan ↗';
+      txLookupResult.appendChild(detailField('Xem thêm', a));
+    }
+  } catch (error) {
+    console.error(error);
+    txLookupResult.innerHTML = '';
+    const err = document.createElement('div');
+    err.className = 'display-content';
+    err.textContent = `Không tra cứu được: ${errorReason(error)}`;
+    txLookupResult.appendChild(err);
+  }
+}
+
 // Hiển thị tên mạng và điền sẵn địa chỉ contract theo NET
 document.getElementById('switchNetworkBtn').textContent = `🔀 Chuyển sang ${NET.label}`;
 document.getElementById('networkSubtitle').textContent = `Tương tác Smart Contract trên mạng ${NET.label}`;
@@ -954,6 +1241,11 @@ detailModal.addEventListener('click', (e) => { if (e.target === detailModal) clo
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDetail(); });
 submitPostBtn.addEventListener('click', submitPost);
 cancelEditBtn.addEventListener('click', resetForm);
+sendTransferBtn.addEventListener('click', sendTransfer);
+refreshTransfersBtn.addEventListener('click', loadTransfers);
+myTransfersChk.addEventListener('change', loadTransfers);
+txLookupBtn.addEventListener('click', lookupTx);
+txLookupInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') lookupTx(); });
 clearLogsBtn.addEventListener('click', () => {
   logsContainer.innerHTML = '<div class="log-entry log-info">[Hệ thống] Nhật ký đã được xóa.</div>';
 });
@@ -972,6 +1264,7 @@ if (window.ethereum) {
       addLog(`Chuyển sang tài khoản ví: ${userAccount}`, 'info');
       resetForm();
       if (contract) loadPosts(); // vẽ lại nút Sửa/Xóa theo tác giả mới
+      if (payments) loadTransfers(); // cập nhật nhãn "(bạn)" và bộ lọc "giao dịch của tôi"
     }
   });
 

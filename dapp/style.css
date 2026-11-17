@@ -480,6 +480,10 @@ textarea.input-field {
 .hash-chip { cursor: pointer; padding: 1px 6px; border-radius: 6px; background: rgba(99, 102, 241, 0.15); color: #a5b4fc; font-size: 0.8rem; }
 .hash-chip:hover { background: rgba(99, 102, 241, 0.3); }
 .history-wrap { overflow-x: auto; }
+.history-panel { margin-bottom: 2rem; }
+.amount-cell { color: #34d399; font-weight: 600; }
+.tx-status-ok { color: #34d399; }
+.tx-status-fail { color: #f87171; }
 .history-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
 .history-table th, .history-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border-color); white-space: nowrap; }
 .history-table th { color: var(--text-secondary); font-weight: 600; }

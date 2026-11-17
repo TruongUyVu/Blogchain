@@ -149,6 +149,68 @@
       <div id="historyList" class="history-wrap"><div class="display-content">Chưa nạp Contract.</div></div>
     </section>
 
+    <!-- Chuyển tiền (contract Payments) -->
+    <main class="main-grid">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-tag">Bước 3</div>
+          <h2 class="panel-title">💸 Chuyển tiền (ETH)</h2>
+        </div>
+        <p class="panel-desc">
+          Chuyển ETH từ ví đang kết nối sang ví khác qua contract <code>Payments</code>.
+          Tiền tới thẳng ví người nhận; giao dịch được ghi lại để ai cũng xem được trong bảng lịch sử bên dưới.
+        </p>
+
+        <div class="action-card write-card">
+          <div class="action-header">
+            <span class="badge badge-write">WRITE (Tốn Gas - Ký MetaMask)</span>
+            <span class="action-method">sendEth(to, note)</span>
+          </div>
+          <div class="form-group">
+            <label for="transferToInput">Ví người nhận (0x...):</label>
+            <input type="text" id="transferToInput" placeholder="0x..." class="input-field mono" />
+          </div>
+          <div class="form-group">
+            <label for="transferAmountInput">Số tiền (ETH):</label>
+            <input type="text" id="transferAmountInput" placeholder="Ví dụ: 0.001" inputmode="decimal" class="input-field mono" />
+          </div>
+          <div class="form-group">
+            <label for="transferNoteInput">Ghi chú (không bắt buộc, tối đa 200 byte):</label>
+            <input type="text" id="transferNoteInput" placeholder="Ví dụ: Trả tiền tài liệu" class="input-field" />
+          </div>
+          <button id="sendTransferBtn" class="btn btn-accent w-100">💸 Chuyển tiền (Gửi giao dịch)</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-tag">Tra cứu</div>
+          <h2 class="panel-title">🔎 Xem một giao dịch bất kỳ</h2>
+        </div>
+        <p class="panel-desc">
+          Dán mã giao dịch (TX hash) để xem người gửi, người nhận, số tiền, phí gas và trạng thái.
+          Dùng được cả với giao dịch chuyển thẳng bằng MetaMask (không qua DApp).
+        </p>
+        <div class="form-group">
+          <label for="txLookupInput">Mã giao dịch (0x... 66 ký tự):</label>
+          <input type="text" id="txLookupInput" placeholder="0x..." class="input-field mono" />
+        </div>
+        <button id="txLookupBtn" class="btn btn-secondary w-100">🔎 Tra cứu giao dịch</button>
+        <div id="txLookupResult"></div>
+      </div>
+    </main>
+
+    <!-- Lịch sử chuyển tiền -->
+    <section class="panel history-panel">
+      <div class="panel-header">
+        <h2 class="panel-title">🧾 Lịch sử chuyển tiền</h2>
+        <button id="refreshTransfersBtn" class="btn-text">Tải lại</button>
+      </div>
+      <p class="panel-desc">Lấy từ sự kiện <code>Transferred</code> của contract <code>Payments</code>. Bấm vào mã giao dịch để xem chi tiết.</p>
+      <label class="check-row"><input type="checkbox" id="myTransfersChk" /> Chỉ hiện giao dịch của ví tôi (gửi hoặc nhận)</label>
+      <div id="transfersList" class="history-wrap"><div class="display-content">Kết nối MetaMask để xem lịch sử chuyển tiền.</div></div>
+    </section>
+
     <!-- Activity & Logs Panel -->
     <section class="panel logs-panel">
       <div class="panel-header">
