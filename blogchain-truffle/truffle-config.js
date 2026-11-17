@@ -37,6 +37,10 @@ module.exports = {
         });
       },
       network_id: 11155111, // Chain ID của Sepolia
+      // Phí gas: Truffle mặc định tip 2.5 gwei, trong khi Sepolia gần như trống (base fee ~0)
+      // nên tip 0.05 gwei vẫn được đưa vào block → rẻ hơn khoảng 50 lần.
+      maxPriorityFeePerGas: 50000000, // 0.05 gwei (tính bằng wei)
+      maxFeePerGas: 2000000000, // trần 2 gwei; thực trả = base fee + tip, phần dư không bị trừ
       confirmations: 2, // Chờ 2 block xác nhận cho chắc
       timeoutBlocks: 200,
       skipDryRun: true,

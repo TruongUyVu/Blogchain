@@ -307,6 +307,7 @@ const NETWORKS = {
     deployBlock: 12146786, // dòng "block number" của BlogChain khi deploy
     paymentsAddress: '0xaDBF8d7370383A83Eef6d3844b30f285Fc9f7e1c', // contract Payments (3_deploy_payments.js)
     paymentsDeployBlock: 12151014,
+    priorityFeeGwei: '0.05', // tip trả cho validator, xem feeOverrides()
     explorer: 'https://sepolia.etherscan.io',
     params: {
       chainId: '0xaa36a7',
@@ -323,6 +324,7 @@ const NETWORKS = {
     deployBlock: 0,
     paymentsAddress: '',
     paymentsDeployBlock: 0,
+    priorityFeeGwei: null, // Ganache: để MetaMask tự chọn phí
     explorer: null,
     params: {
       chainId: '0x539',
@@ -363,6 +365,16 @@ async function switchNetwork() {
     console.error(error);
     addLog(`Không chuyển được mạng: ${error.message || error}. Hãy mở MetaMask và chọn mạng ${NET.label} thủ công.`, 'error');
   }
+}
+
+// Phí gas gợi ý cho MetaMask: tip nhỏ (NET.priorityFeeGwei) + trần = 2 × base fee của block mới nhất + tip.
+// Ví mặc định thường đặt tip 1-2.5 gwei, trong khi Sepolia gần như trống nên tip 0.05 gwei vẫn được đưa vào block.
+// MetaMask hiện mức này là "Site suggested"; người dùng vẫn đổi được nếu muốn.
+async function feeOverrides() {
+  if (!NET.priorityFeeGwei) return {};
+  const block = await provider.getBlock('latest');
+  const tip = ethers.parseUnits(NET.priorityFeeGwei, 'gwei');
+  return { maxPriorityFeePerGas: tip, maxFeePerGas: block.baseFeePerGas * 2n + tip };
 }
 
 // Helper: Logging
@@ -886,7 +898,7 @@ async function sendTx(label, txPromise) {
 
   // Chờ giao dịch được đóng gói vào Block (Sepolia mất khoảng 12-30 giây)
   const receipt = await tx.wait();
-  addLog(`✅ Giao dịch thành công trong Block #${receipt.blockNumber}! Gas sử dụng: ${receipt.gasUsed.toString()}`, 'success');
+  addLog(`✅ Giao dịch thành công trong Block #${receipt.blockNumber}! Gas sử dụng: ${receipt.gasUsed.toString()} · Phí: ${ethers.formatEther(receipt.fee)} ETH`, 'success');
 
   // Cập nhật lại số dư ví và dữ liệu
   await updateWalletInfo();
@@ -929,10 +941,10 @@ async function submitPost() {
 
     if (editingPostId === null) {
       addLog(`Chuẩn bị gửi giao dịch createPost("${title}")...`, 'info');
-      await sendTx('createPost', contract.connect(signer).createPost(title, content));
+      await sendTx('createPost', contract.connect(signer).createPost(title, content, await feeOverrides()));
     } else {
       addLog(`Chuẩn bị gửi giao dịch editPost(${editingPostId}, "${title}")...`, 'info');
-      await sendTx('editPost', contract.connect(signer).editPost(editingPostId, title, content));
+      await sendTx('editPost', contract.connect(signer).editPost(editingPostId, title, content, await feeOverrides()));
     }
     resetForm();
 
@@ -951,7 +963,7 @@ async function deletePost(id) {
   try {
     submitPostBtn.disabled = true;
     addLog(`Chuẩn bị gửi giao dịch deletePost(${id})...`, 'info');
-    await sendTx('deletePost', contract.connect(signer).deletePost(id));
+    await sendTx('deletePost', contract.connect(signer).deletePost(id, await feeOverrides()));
     if (editingPostId !== null && editingPostId === id) resetForm();
   } catch (error) {
     handleTxError(error);
@@ -1051,13 +1063,13 @@ async function sendTransfer() {
     sendTransferBtn.textContent = '⏳ Đang chờ ký MetaMask...';
     addLog(`Chuẩn bị gửi giao dịch sendEth(${shortAddr(to)}) kèm ${ethers.formatEther(value)} ETH...`, 'info');
 
-    const tx = await payments.connect(signer).sendEth(to, note, { value });
+    const tx = await payments.connect(signer).sendEth(to, note, { value, ...(await feeOverrides()) });
     addLog(`Giao dịch chuyển tiền đã được phát đi! TX Hash: ${tx.hash}`, 'info');
     if (NET.explorer) addLog(`Xem trên trình duyệt khối: ${NET.explorer}/tx/${tx.hash}`, 'info');
     sendTransferBtn.textContent = '⛏️ Đang xác thực Block (Mining)...';
 
     const receipt = await tx.wait();
-    addLog(`✅ Đã chuyển ${ethers.formatEther(value)} ETH tới ${shortAddr(to)} trong Block #${receipt.blockNumber}!`, 'success');
+    addLog(`✅ Đã chuyển ${ethers.formatEther(value)} ETH tới ${shortAddr(to)} trong Block #${receipt.blockNumber}! Phí gas: ${ethers.formatEther(receipt.fee)} ETH`, 'success');
 
     transferAmountInput.value = '';
     transferNoteInput.value = '';
