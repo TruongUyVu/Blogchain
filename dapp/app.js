@@ -304,6 +304,17 @@ const txLookupInput = document.getElementById('txLookupInput');
 const txLookupBtn = document.getElementById('txLookupBtn');
 const txLookupResult = document.getElementById('txLookupResult');
 
+const postImageDrop = document.getElementById('postImageDrop');
+const postImageInput = document.getElementById('postImageInput');
+const postImagePreview = document.getElementById('postImagePreview');
+const postImagePreviewImg = document.getElementById('postImagePreviewImg');
+const postImageInfo = document.getElementById('postImageInfo');
+const postImageRemoveBtn = document.getElementById('postImageRemoveBtn');
+const postImageCidInput = document.getElementById('postImageCidInput');
+const pinataJwtInput = document.getElementById('pinataJwtInput');
+const pinataRememberChk = document.getElementById('pinataRememberChk');
+const pinataClearBtn = document.getElementById('pinataClearBtn');
+
 const docDropzone = document.getElementById('docDropzone');
 const docFileInput = document.getElementById('docFileInput');
 const docFileLabel = document.getElementById('docFileLabel');
@@ -443,6 +454,16 @@ async function feeOverrides() {
   const block = await readProvider.getBlock('latest');
   const tip = ethers.parseUnits(NET.priorityFeeGwei, 'gwei');
   return { maxPriorityFeePerGas: tip, maxFeePerGas: block.baseFeePerGas * 2n + tip };
+}
+
+// Tùy chọn cho một giao dịch: phí gas (feeOverrides) + giới hạn gas = ước tính + 30% dự phòng.
+// Giao dịch xóa bớt dữ liệu (ví dụ sửa bài cho ngắn lại) được hoàn gas sau khi chạy xong, nhưng lúc chạy
+// vẫn cần đủ gas "trước hoàn"; dùng đúng số ước tính có thể bị "out of gas" (đã gặp trên Ganache).
+// Gas dư không dùng hết thì không bị tính phí.
+async function txOptions(method, args, extra = {}) {
+  const opts = { ...extra, ...(await feeOverrides()) };
+  const estimate = await method.estimateGas(...args, opts);
+  return { ...opts, gasLimit: (estimate * 13n) / 10n };
 }
 
 // Helper: Logging. Lỗi và cảnh báo luôn hiện thông báo nổi; thông báo thành công chỉ hiện khi truyền toast = true
@@ -667,11 +688,14 @@ function renderPosts(posts) {
     const edited = p.updatedAt !== p.createdAt ? ` · sửa lúc ${formatTime(p.updatedAt)}` : '';
     meta.textContent = `${shortAddr(p.author)} · ${formatTime(p.createdAt)}${edited}`;
 
+    const { text, cid } = splitImage(p.content);
     const content = document.createElement('div');
     content.className = 'post-content';
-    content.textContent = p.content;
+    content.textContent = text;
 
-    card.append(title, meta, content);
+    card.append(title, meta);
+    if (cid) card.appendChild(ipfsImage(cid, `Ảnh minh họa: ${p.title}`));
+    card.append(content);
 
     const actions = document.createElement('div');
     actions.className = 'post-actions';
@@ -781,10 +805,13 @@ function versionBlock(heading, ev, when, content) {
     const t = document.createElement('div');
     t.className = 'post-title';
     t.textContent = content.title;
+    const { text, cid } = splitImage(content.content);
     const c = document.createElement('div');
     c.className = 'post-content';
-    c.textContent = content.content;
-    body.append(t, c);
+    c.textContent = text;
+    body.append(t);
+    if (cid) body.appendChild(ipfsImage(cid, `Ảnh minh họa: ${content.title}`));
+    body.append(c);
   } else {
     body.textContent = '(Không đọc lại được nội dung của giao dịch này)';
   }
@@ -826,10 +853,13 @@ async function openPostDetail(p) {
     h.className = 'detail-section';
     h.textContent = 'Nội dung hiện tại';
     detailBody.appendChild(h);
+    const current = splitImage(p.content);
+    if (current.cid) detailBody.appendChild(ipfsImage(current.cid, `Ảnh minh họa: ${p.title}`));
     const cur = document.createElement('div');
     cur.className = 'post-content';
-    cur.textContent = p.content;
+    cur.textContent = current.text;
     detailBody.appendChild(cur);
+    if (current.cid) detailBody.appendChild(detailField('Ảnh trên IPFS (CID)', current.cid));
 
     const h2 = document.createElement('div');
     h2.className = 'detail-section';
@@ -931,11 +961,176 @@ async function loadHistory() {
   }
 }
 
+// ---------- Ảnh minh họa qua IPFS ----------
+// Ảnh nằm trên IPFS; bài viết chỉ lưu thêm một dòng "[img:ipfs://<CID>]" ở cuối nội dung.
+// Nhờ vậy không phải sửa / deploy lại contract BlogChain và các bài cũ vẫn giữ nguyên.
+
+const IPFS_GATEWAYS = ['https://gateway.pinata.cloud/ipfs/', 'https://ipfs.io/ipfs/', 'https://dweb.link/ipfs/'];
+const IMG_MARKER_RE = /\n*\[img:ipfs:\/\/([A-Za-z0-9]+)\]\s*$/;
+const CID_RE = /^(Qm[1-9A-HJ-NP-Za-km-z]{44}|b[a-z2-7]{50,})$/;
+const MAX_IMAGE_INPUT = 15 * 1024 * 1024;
+const MAX_GIF_BYTES = 3 * 1024 * 1024;
+const MAX_IMAGE_SIDE = 1600;
+const PINATA_UPLOAD_URL = 'https://uploads.pinata.cloud/v3/files';
+const PINATA_JWT_KEY = 'blogchain-pinata-jwt';
+
+let postImage = null; // ảnh sẽ đăng kèm bài: { file, previewUrl, cid } (file = null nếu ảnh đã có sẵn trên IPFS)
+
+// Tách nội dung bài thành phần chữ và CID ảnh (nếu có)
+function splitImage(content) {
+  const m = content.match(IMG_MARKER_RE);
+  return m ? { text: content.slice(0, m.index), cid: m[1] } : { text: content, cid: null };
+}
+
+function withImage(text, cid) {
+  return cid ? `${text}\n\n[img:ipfs://${cid}]` : text;
+}
+
+// Lấy CID từ những gì người dùng dán: CID trần, ipfs://CID, hoặc link cổng .../ipfs/CID
+function parseCid(input) {
+  const s = input.trim();
+  const m = s.match(/^ipfs:\/\/([A-Za-z0-9]+)/) || s.match(/\/ipfs\/([A-Za-z0-9]+)/) || s.match(/^https?:\/\/([a-z2-7]+)\.ipfs\./);
+  const cid = m ? m[1] : s;
+  return CID_RE.test(cid) ? cid : null;
+}
+
+// Thẻ <img> đọc ảnh qua cổng IPFS; cổng này lỗi thì tự thử cổng tiếp theo
+function ipfsImage(cid, alt) {
+  const img = document.createElement('img');
+  img.className = 'post-image';
+  img.alt = alt;
+  img.loading = 'lazy';
+  let gw = 0;
+  img.src = IPFS_GATEWAYS[gw] + cid;
+  img.addEventListener('error', () => {
+    gw += 1;
+    if (gw < IPFS_GATEWAYS.length) {
+      img.src = IPFS_GATEWAYS[gw] + cid;
+      return;
+    }
+    const box = document.createElement('div');
+    box.className = 'post-image-failed';
+    box.append('Chưa tải được ảnh từ IPFS (ảnh mới đăng có thể cần vài phút). ');
+    const a = document.createElement('a');
+    a.href = IPFS_GATEWAYS[0] + cid;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    a.textContent = 'Mở ảnh';
+    box.appendChild(a);
+    img.replaceWith(box);
+  });
+  img.addEventListener('click', () => window.open(img.src, '_blank', 'noopener'));
+  return img;
+}
+
+// Thu nhỏ ảnh (cạnh dài tối đa 1600px) và lưu lại dạng JPEG. Lưu lại qua canvas cũng xóa
+// thông tin ẩn trong ảnh (EXIF), kể cả vị trí GPS của ảnh chụp bằng điện thoại.
+async function prepareImage(file) {
+  if (!file.type.startsWith('image/')) throw new Error('File đã chọn không phải là ảnh.');
+  if (file.size > MAX_IMAGE_INPUT) throw new Error(`Ảnh quá lớn (${formatBytes(file.size)}). Hãy chọn ảnh dưới 15 MB.`);
+  if (file.type === 'image/gif') { // giữ nguyên ảnh động
+    if (file.size > MAX_GIF_BYTES) throw new Error('Ảnh GIF tối đa 3 MB.');
+    return file;
+  }
+  const bmp = await createImageBitmap(file);
+  const scale = Math.min(1, MAX_IMAGE_SIDE / Math.max(bmp.width, bmp.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bmp.width * scale);
+  canvas.height = Math.round(bmp.height * scale);
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#fff'; // ảnh PNG nền trong suốt → nền trắng thay vì đen
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(bmp, 0, 0, canvas.width, canvas.height);
+  bmp.close();
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+  return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' });
+}
+
+function clearPostImage() {
+  if (postImage && postImage.previewUrl) URL.revokeObjectURL(postImage.previewUrl);
+  postImage = null;
+  postImagePreview.hidden = true;
+  postImagePreviewImg.removeAttribute('src');
+  postImageInfo.textContent = '';
+}
+
+// Người dùng chọn / kéo thả ảnh từ máy: chuẩn bị ảnh và xem trước (chưa tải lên đâu cả)
+async function selectPostImage(file) {
+  if (!file) return;
+  try {
+    const prepared = await prepareImage(file);
+    clearPostImage();
+    postImage = { file: prepared, previewUrl: URL.createObjectURL(prepared), cid: null };
+    postImagePreviewImg.src = postImage.previewUrl;
+    postImageInfo.textContent = `${prepared.name} · ${formatBytes(prepared.size)} · đã thu nhỏ và xóa thông tin vị trí`;
+    postImagePreview.hidden = false;
+    postImageCidInput.value = '';
+  } catch (error) {
+    alert(error.message || String(error));
+  } finally {
+    postImageInput.value = ''; // cho phép chọn lại đúng ảnh đó lần nữa
+  }
+}
+
+// Xem trước ảnh đã có trên IPFS (khi dán CID hoặc khi sửa bài có ảnh)
+function showCidPreview(cid) {
+  clearPostImage();
+  postImage = { file: null, previewUrl: null, cid };
+  postImagePreviewImg.src = IPFS_GATEWAYS[0] + cid;
+  postImageInfo.textContent = `Ảnh trên IPFS: ${cid.slice(0, 12)}...${cid.slice(-6)}`;
+  postImagePreview.hidden = false;
+}
+
+function onCidInputChange() {
+  const raw = postImageCidInput.value.trim();
+  if (!raw) {
+    if (postImage && !postImage.file) clearPostImage();
+    return;
+  }
+  const cid = parseCid(raw);
+  if (!cid) {
+    alert('Mã CID không hợp lệ. Ví dụ đúng: bafy... hoặc Qm..., ipfs://bafy..., https://.../ipfs/bafy...');
+    return;
+  }
+  postImageCidInput.value = cid;
+  showCidPreview(cid);
+}
+
+// Khóa Pinata (JWT): chỉ giữ trong trình duyệt; chỉ lưu lại khi người dùng tick "Nhớ khóa"
+function savePinataPref() {
+  try {
+    const jwt = pinataJwtInput.value.trim();
+    if (pinataRememberChk.checked && jwt) localStorage.setItem(PINATA_JWT_KEY, jwt);
+    else localStorage.removeItem(PINATA_JWT_KEY);
+  } catch {}
+}
+
+// Tải ảnh lên IPFS qua Pinata, trả về CID
+async function uploadToPinata(file) {
+  const jwt = pinataJwtInput.value.trim();
+  if (!jwt) throw new Error('Chưa có khóa Pinata. Mở mục "Cài đặt tải ảnh lên IPFS" để dán khóa, hoặc dán sẵn mã CID của ảnh.');
+  const form = new FormData();
+  form.append('file', file);
+  form.append('network', 'public');
+  form.append('name', `blogchain-${file.name}`);
+  const res = await fetch(PINATA_UPLOAD_URL, { method: 'POST', headers: { Authorization: `Bearer ${jwt}` }, body: form });
+  if (res.status === 401 || res.status === 403) throw new Error('Khóa Pinata không hợp lệ, đã hết hạn hoặc không có quyền tải file.');
+  if (!res.ok) throw new Error(`Pinata báo lỗi ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  const json = await res.json();
+  const cid = json && json.data && json.data.cid;
+  if (!cid) throw new Error('Pinata không trả về mã CID của ảnh.');
+  return cid;
+}
+
 // Chuyển form sang chế độ sửa bài
 function startEdit(post) {
   editingPostId = post.id;
   postTitleInput.value = post.title;
-  postContentInput.value = post.content;
+  const { text, cid } = splitImage(post.content);
+  postContentInput.value = text;
+  postImageCidInput.value = cid || '';
+  if (cid) showCidPreview(cid);
+  else clearPostImage();
   writeModeLabel.textContent = `editPost(${post.id}, title, content)`;
   submitPostBtn.textContent = SUBMIT_TEXT_EDIT;
   cancelEditBtn.style.display = '';
@@ -948,6 +1143,8 @@ function resetForm() {
   editingPostId = null;
   postTitleInput.value = '';
   postContentInput.value = '';
+  postImageCidInput.value = '';
+  clearPostImage();
   writeModeLabel.textContent = 'createPost(title, content)';
   submitPostBtn.textContent = SUBMIT_TEXT_CREATE;
   cancelEditBtn.style.display = 'none';
@@ -986,16 +1183,28 @@ async function submitPost() {
   }
 
   const title = postTitleInput.value.trim();
-  const content = postContentInput.value.trim();
-  if (!title || !content) {
+  const text = postContentInput.value.trim();
+  if (!title || !text) {
     alert('Vui lòng nhập đầy đủ tiêu đề và nội dung!');
     return;
   }
 
-  // Giới hạn tính theo byte giống trong contract (tiếng Việt có dấu chiếm nhiều byte hơn 1 ký tự)
+  // Mã CID dán tay nhưng chưa bấm ra ngoài ô thì xử lý luôn ở đây
+  if (!postImage && postImageCidInput.value.trim()) {
+    const cid = parseCid(postImageCidInput.value);
+    if (!cid) {
+      alert('Mã CID của ảnh không hợp lệ!');
+      return;
+    }
+    postImage = { file: null, previewUrl: null, cid };
+  }
+
+  // Giới hạn tính theo byte giống trong contract (tiếng Việt có dấu chiếm nhiều byte hơn 1 ký tự).
+  // Có ảnh thì tính cả dòng "[img:ipfs://CID]" (CID dài tối đa khoảng 59 ký tự).
   const encoder = new TextEncoder();
-  if (encoder.encode(title).length > 100 || encoder.encode(content).length > 2000) {
-    alert('Tiêu đề tối đa 100 byte, nội dung tối đa 2000 byte!');
+  const contentLimitCheck = withImage(text, postImage ? (postImage.cid || 'b'.repeat(59)) : null);
+  if (encoder.encode(title).length > 100 || encoder.encode(contentLimitCheck).length > 2000) {
+    alert(`Tiêu đề tối đa 100 byte, nội dung tối đa 2000 byte${postImage ? ' (dòng ảnh chiếm khoảng 75 byte)' : ''}!`);
     return;
   }
 
@@ -1003,14 +1212,32 @@ async function submitPost() {
 
   try {
     submitPostBtn.disabled = true;
+
+    // Ảnh chọn từ máy: tải lên IPFS trước, lấy CID rồi mới gửi giao dịch
+    if (postImage && !postImage.cid) {
+      submitPostBtn.textContent = 'Đang tải ảnh lên IPFS...';
+      addLog(`Đang tải ảnh "${postImage.file.name}" (${formatBytes(postImage.file.size)}) lên IPFS qua Pinata...`, 'info');
+      try {
+        postImage.cid = await uploadToPinata(postImage.file);
+      } catch (error) {
+        console.error(error);
+        addLog(`Không tải được ảnh lên IPFS: ${error.message || error}`, 'error');
+        return;
+      }
+      addLog(`Đã tải ảnh lên IPFS. CID: ${postImage.cid}`, 'success');
+    }
+    const content = withImage(text, postImage ? postImage.cid : null);
+
     submitPostBtn.textContent = WAIT_SIGN_TEXT;
 
     if (editingPostId === null) {
       addLog(`Chuẩn bị gửi giao dịch createPost("${title}")...`, 'info');
-      await sendTx('createPost', contract.connect(signer).createPost(title, content, await feeOverrides()));
+      const c = contract.connect(signer);
+      await sendTx('createPost', c.createPost(title, content, await txOptions(c.createPost, [title, content])));
     } else {
       addLog(`Chuẩn bị gửi giao dịch editPost(${editingPostId}, "${title}")...`, 'info');
-      await sendTx('editPost', contract.connect(signer).editPost(editingPostId, title, content, await feeOverrides()));
+      const c = contract.connect(signer);
+      await sendTx('editPost', c.editPost(editingPostId, title, content, await txOptions(c.editPost, [editingPostId, title, content])));
     }
     resetForm();
 
@@ -1030,7 +1257,8 @@ async function deletePost(id) {
   try {
     submitPostBtn.disabled = true;
     addLog(`Chuẩn bị gửi giao dịch deletePost(${id})...`, 'info');
-    await sendTx('deletePost', contract.connect(signer).deletePost(id, await feeOverrides()));
+    const c = contract.connect(signer);
+    await sendTx('deletePost', c.deletePost(id, await txOptions(c.deletePost, [id])));
     if (editingPostId !== null && editingPostId === id) resetForm();
   } catch (error) {
     handleTxError(error);
@@ -1175,7 +1403,8 @@ async function sendTransfer() {
     sendTransferBtn.textContent = WAIT_SIGN_TEXT;
     addLog(`Chuẩn bị gửi giao dịch sendEth(${shortAddr(to)}) kèm ${ethers.formatEther(value)} ETH...`, 'info');
 
-    const tx = await payments.connect(signer).sendEth(to, note, { value, ...(await feeOverrides()) });
+    const p = payments.connect(signer);
+    const tx = await p.sendEth(to, note, await txOptions(p.sendEth, [to, note], { value }));
     addLog(`Giao dịch chuyển tiền đã được phát đi! TX Hash: ${tx.hash}`, 'info');
     if (NET.explorer) addLog(`Xem trên trình duyệt khối: ${NET.explorer}/tx/${tx.hash}`, 'info');
     sendTransferBtn.textContent = WAIT_MINED_TEXT;
@@ -1516,7 +1745,8 @@ async function registerDocument() {
     docRegisterBtn.disabled = true;
     docRegisterBtn.textContent = WAIT_SIGN_TEXT;
     addLog(`Chuẩn bị gửi giao dịch register("${title}")...`, 'info');
-    const tx = await docs.connect(signer).register(currentDoc.hash, title, await feeOverrides());
+    const d = docs.connect(signer);
+    const tx = await d.register(currentDoc.hash, title, await txOptions(d.register, [currentDoc.hash, title]));
     addLog(`Giao dịch đăng ký tài liệu đã được phát đi! TX Hash: ${tx.hash}`, 'info');
     if (NET.explorer) addLog(`Xem trên trình duyệt khối: ${NET.explorer}/tx/${tx.hash}`, 'info');
     docRegisterBtn.textContent = WAIT_MINED_TEXT;
@@ -1545,7 +1775,8 @@ async function revokeDocument() {
     docRevokeBtn.disabled = true;
     docRevokeBtn.textContent = WAIT_SIGN_TEXT;
     addLog('Chuẩn bị gửi giao dịch revoke()...', 'info');
-    const tx = await docs.connect(signer).revoke(currentDoc.hash, await feeOverrides());
+    const d = docs.connect(signer);
+    const tx = await d.revoke(currentDoc.hash, await txOptions(d.revoke, [currentDoc.hash]));
     addLog(`Giao dịch thu hồi tài liệu đã được phát đi! TX Hash: ${tx.hash}`, 'info');
     docRevokeBtn.textContent = WAIT_MINED_TEXT;
 
@@ -1680,6 +1911,33 @@ docHashInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') checkPa
 docRegisterBtn.addEventListener('click', registerDocument);
 docRevokeBtn.addEventListener('click', revokeDocument);
 refreshDocsBtn.addEventListener('click', loadDocuments);
+postImageInput.addEventListener('change', () => selectPostImage(postImageInput.files[0]));
+postImageDrop.addEventListener('dragover', (e) => { e.preventDefault(); postImageDrop.classList.add('dragover'); });
+postImageDrop.addEventListener('dragleave', () => postImageDrop.classList.remove('dragover'));
+postImageDrop.addEventListener('drop', (e) => {
+  e.preventDefault();
+  postImageDrop.classList.remove('dragover');
+  selectPostImage(e.dataTransfer.files[0]);
+});
+postImageRemoveBtn.addEventListener('click', () => { clearPostImage(); postImageCidInput.value = ''; });
+postImageCidInput.addEventListener('change', onCidInputChange);
+pinataJwtInput.addEventListener('change', savePinataPref);
+pinataRememberChk.addEventListener('change', savePinataPref);
+pinataClearBtn.addEventListener('click', () => {
+  pinataJwtInput.value = '';
+  pinataRememberChk.checked = false;
+  savePinataPref();
+  addLog('Đã xóa khóa Pinata khỏi trình duyệt này.', 'info', true);
+});
+
+// Khóa Pinata đã lưu trên máy này (nếu người dùng từng chọn "Nhớ khóa")
+try {
+  const savedJwt = localStorage.getItem(PINATA_JWT_KEY);
+  if (savedJwt) {
+    pinataJwtInput.value = savedJwt;
+    pinataRememberChk.checked = true;
+  }
+} catch {}
 clearLogsBtn.addEventListener('click', () => {
   logsContainer.innerHTML = '<div class="log-entry log-info">[Hệ thống] Nhật ký đã được xóa.</div>';
 });

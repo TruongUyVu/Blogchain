@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <!-- ?v=...: đổi số này mỗi lần sửa CSS/JS để trình duyệt tải bản mới thay vì bản lưu tạm (GitHub Pages lưu 10 phút) -->
-  <link rel="stylesheet" href="style.css?v=6" />
+  <link rel="stylesheet" href="style.css?v=7" />
   <!-- Ethers.js v6 CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
 </head>
@@ -117,6 +117,35 @@
             <label for="postContentInput">Nội dung</label>
             <textarea id="postContentInput" rows="6" placeholder="Tối đa 2000 byte" class="input-field"></textarea>
           </div>
+
+          <!-- Ảnh minh họa: ảnh lên IPFS, bài viết chỉ lưu mã CID của ảnh -->
+          <div class="form-group">
+            <label for="postImageInput">Ảnh minh họa <span class="optional">(không bắt buộc)</span></label>
+            <label id="postImageDrop" class="dropzone dropzone-sm" for="postImageInput">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>
+              <span>Bấm để chọn ảnh, hoặc kéo thả ảnh vào đây</span>
+              <input type="file" id="postImageInput" accept="image/*" class="visually-hidden" />
+            </label>
+            <div id="postImagePreview" class="image-preview" hidden>
+              <img id="postImagePreviewImg" alt="Ảnh minh họa sẽ đăng kèm bài viết" />
+              <div class="image-preview-info">
+                <span id="postImageInfo"></span>
+                <button id="postImageRemoveBtn" type="button" class="btn btn-ghost btn-sm">Bỏ ảnh</button>
+              </div>
+            </div>
+            <input type="text" id="postImageCidInput" placeholder="Hoặc dán mã CID / ipfs:// có sẵn" class="input-field mono" />
+          </div>
+
+          <details class="ipfs-settings">
+            <summary>Cài đặt tải ảnh lên IPFS (khóa Pinata)</summary>
+            <p class="hint">Để tải ảnh lên IPFS cần khóa API (JWT) của một tài khoản <strong>Pinata</strong> miễn phí. Khóa chỉ nằm trong trình duyệt của bạn và chỉ được gửi tới Pinata. Không cần khóa nếu bạn dán sẵn mã CID ở trên.</p>
+            <input type="password" id="pinataJwtInput" placeholder="Dán JWT của Pinata vào đây" class="input-field mono" autocomplete="off" />
+            <div class="ipfs-settings-row">
+              <label class="check-row"><input type="checkbox" id="pinataRememberChk" /> Nhớ khóa trên máy này (chỉ nên chọn trên máy cá nhân)</label>
+              <button id="pinataClearBtn" type="button" class="btn btn-ghost btn-sm">Xóa khóa đã lưu</button>
+            </div>
+          </details>
+
           <button id="submitPostBtn" class="btn btn-primary btn-lg w-100">Đăng bài</button>
           <button id="cancelEditBtn" class="btn btn-ghost w-100" style="display: none;">Hủy chỉnh sửa</button>
           <p class="hint">Hàm gọi: <code id="writeModeLabel">createPost(title, content)</code></p>
@@ -341,6 +370,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=6"></script>
+  <script src="app.js?v=7"></script>
 </body>
 </html>
