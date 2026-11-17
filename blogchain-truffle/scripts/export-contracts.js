@@ -7,7 +7,7 @@
 const fs = require("fs");
 const path = require("path");
 
-const CONTRACTS = ["BlogChain", "Payments", "DocumentRegistry"];
+const CONTRACTS = ["BlogChain", "Payments", "DocumentRegistry", "BlogModeration"];
 
 // Mạng cần xuất: id mạng trong artifact của Truffle → RPC để tra số block lúc deploy
 const NETWORKS = {

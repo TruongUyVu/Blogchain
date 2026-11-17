@@ -618,6 +618,61 @@ textarea.input-field { resize: vertical; line-height: 1.6; }
   vertical-align: middle;
 }
 
+/* Bài bị quản trị viên ẩn */
+.post-hidden { border-style: dashed !important; background: var(--warning-soft) !important; }
+
+.badge-hidden {
+  margin-left: 8px;
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  border-radius: 999px;
+  background: var(--warning);
+  color: #fff;
+  vertical-align: middle;
+}
+
+.hidden-reason {
+  font-size: 0.92rem;
+  color: var(--warning);
+  font-weight: 600;
+}
+
+.btn-mod { color: var(--warning); border-color: #f0c78a; }
+
+/* Khung kiểm duyệt nội dung */
+.mod-panel[hidden],
+.mod-owner[hidden] { display: none; }
+
+.mod-role {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 14px 16px;
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.mod-role .mono { overflow-wrap: anywhere; }
+
+.mod-owner {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+}
+
+.mod-owner label { font-weight: 600; }
+.mod-owner-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+
+.card-subtitle { font-size: 1.05rem; font-weight: 700; }
+
+@media (max-width: 640px) {
+  .mod-role { grid-template-columns: 1fr; }
+}
+
 .empty,
 .display-content {
   color: var(--text-muted);

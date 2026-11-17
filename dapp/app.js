@@ -4,6 +4,7 @@
 let CONTRACT_ABI = null; // BlogChain
 let PAYMENTS_ABI = null; // Payments
 let DOCS_ABI = null; // DocumentRegistry
+let MODERATION_ABI = null; // BlogModeration (kiểm duyệt: ẩn bài không phù hợp)
 
 // State Variables
 let provider = null;
@@ -11,6 +12,9 @@ let signer = null;
 let contract = null;
 let payments = null; // contract Payments (chuyển tiền)
 let docs = null; // contract DocumentRegistry (xác thực tài liệu)
+let moderation = null; // contract BlogModeration (kiểm duyệt bài viết)
+let canModerate = false; // ví đang kết nối có quyền ẩn / hiện bài không
+let isModOwner = false; // ví đang kết nối là chủ sở hữu contract kiểm duyệt (thêm / bớt quản trị viên)
 let currentDoc = null; // tài liệu đang kiểm tra: { hash, name, size }
 let userAccount = null;
 let editingPostId = null; // null = đang đăng bài mới, số = đang sửa bài có id đó
@@ -74,6 +78,17 @@ const docRevokeBtn = document.getElementById('docRevokeBtn');
 const docsList = document.getElementById('docsList');
 const refreshDocsBtn = document.getElementById('refreshDocsBtn');
 
+// Kiểm duyệt nội dung
+const modPanel = document.getElementById('modPanel');
+const modYourRole = document.getElementById('modYourRole');
+const modList = document.getElementById('modList');
+const modHistory = document.getElementById('modHistory');
+const modOwnerBox = document.getElementById('modOwnerBox');
+const modAddressInput = document.getElementById('modAddressInput');
+const modAddBtn = document.getElementById('modAddBtn');
+const modRemoveBtn = document.getElementById('modRemoveBtn');
+const refreshModBtn = document.getElementById('refreshModBtn');
+
 const switchNetworkBtn = document.getElementById('switchNetworkBtn');
 const onboardCard = document.getElementById('onboardCard');
 const toastArea = document.getElementById('toastArea');
@@ -99,6 +114,8 @@ const NETWORKS = {
     paymentsDeployBlock: 0,
     docsAddress: '',
     docsDeployBlock: 0,
+    moderationAddress: '',
+    moderationDeployBlock: 0,
     priorityFeeGwei: '0.05', // tip trả cho validator, xem feeOverrides()
     // Các nguồn RPC công khai để ai cũng đọc được dữ liệu, không cần ví. Thử lần lượt từ trên xuống.
     //  - logChunk: số block tối đa mỗi lần đọc lịch sử sự kiện (eth_getLogs) mà nguồn đó cho phép.
@@ -130,6 +147,8 @@ const NETWORKS = {
     paymentsDeployBlock: 0,
     docsAddress: '',
     docsDeployBlock: 0,
+    moderationAddress: '',
+    moderationDeployBlock: 0,
     priorityFeeGwei: null, // Ganache: để MetaMask tự chọn phí
     readRpcs: [{ url: 'http://127.0.0.1:7545', logChunk: 45000, batch: true }],
     explorer: null,
@@ -146,7 +165,7 @@ const NETWORKS = {
 const NET = NETWORKS.sepolia;
 
 // Nạp ABI + địa chỉ contract từ contracts.json (do "npm run export" tạo ra) và điền vào NET
-const CONTRACTS_JSON_URL = 'contracts.json?v=1';
+const CONTRACTS_JSON_URL = 'contracts.json?v=2';
 
 async function loadContractsConfig() {
   const res = await fetch(CONTRACTS_JSON_URL, { cache: 'no-cache' });
@@ -155,7 +174,9 @@ async function loadContractsConfig() {
   CONTRACT_ABI = cfg.abi.BlogChain;
   PAYMENTS_ABI = cfg.abi.Payments;
   DOCS_ABI = cfg.abi.DocumentRegistry;
+  MODERATION_ABI = cfg.abi.BlogModeration || null;
   const deployed = cfg.networks[NET.artifactNetworkId] || {};
+  if (deployed.BlogModeration) Object.assign(NET, { moderationAddress: deployed.BlogModeration.address, moderationDeployBlock: deployed.BlogModeration.deployBlock });
   if (deployed.BlogChain) Object.assign(NET, { contractAddress: deployed.BlogChain.address, deployBlock: deployed.BlogChain.deployBlock });
   if (deployed.Payments) Object.assign(NET, { paymentsAddress: deployed.Payments.address, paymentsDeployBlock: deployed.Payments.deployBlock });
   if (deployed.DocumentRegistry) Object.assign(NET, { docsAddress: deployed.DocumentRegistry.address, docsDeployBlock: deployed.DocumentRegistry.deployBlock });
@@ -203,6 +224,7 @@ async function reconnectReadProvider() {
   if (contract) contract = contract.connect(readProvider);
   if (payments) payments = payments.connect(readProvider);
   if (docs) docs = docs.connect(readProvider);
+  if (moderation) moderation = moderation.connect(readProvider);
 }
 
 async function queryLogs(c, filter, fromBlock) {
@@ -336,6 +358,10 @@ function errorReason(error) {
   else if (all.includes('insufficient funds') || all.includes("doesn't have enough funds")) hint = ' → GỢI Ý: tài khoản đang chọn không đủ ETH để trả phí gas. Trên Sepolia, xin ETH miễn phí ở một "Sepolia faucet".';
   else if (all.includes('only the author')) hint = ' → GỢI Ý: tài khoản đang chọn không phải tác giả của bài này.';
   else if (all.includes('post is deleted')) hint = ' → GỢI Ý: bài viết này đã bị xóa.';
+  else if (all.includes('only moderators')) hint = ' → GỢI Ý: tài khoản đang chọn không phải quản trị viên.';
+  else if (all.includes('only the owner')) hint = ' → GỢI Ý: chỉ chủ sở hữu (giảng viên) mới thêm / bớt được quản trị viên.';
+  else if (all.includes('already hidden')) hint = ' → GỢI Ý: bài này đã bị ẩn từ trước.';
+  else if (all.includes('no change')) hint = ' → GỢI Ý: ví này đã ở đúng trạng thái đó rồi (đã là / chưa là quản trị viên).';
   else if (all.includes('revert')) hint = ' → GỢI Ý: hợp đồng từ chối giao dịch (kiểm tra quyền tác giả, độ dài tiêu đề/nội dung).';
   return text + hint;
 }
@@ -367,7 +393,8 @@ async function connectWallet() {
     addLog(`Đã kết nối thành công với ví: ${userAccount}`, 'success', true);
 
     // Dữ liệu đã được đọc sẵn khi mở trang; vẽ lại để hiện nút Sửa/Xóa cho bài của mình và nhãn "(bạn)"
-    if (contract) loadPosts();
+    // (kiểm tra quyền quản trị trước để hiện thêm nút Ẩn bài nếu ví là quản trị viên)
+    refreshModRole().then(() => { if (contract) loadPosts(); });
     if (payments) loadTransfers();
     if (docs) loadDocuments();
     if (currentDoc) checkDocument(); // hiện nút Thu hồi nếu mình là người đăng ký
@@ -454,13 +481,20 @@ async function loadPosts() {
     const count = Number(await contract.getPostCount());
 
     // Đọc mọi bài cùng lúc (mới nhất trước); ethers tự gộp các lệnh gọi thành ít yêu cầu RPC
-    const all = await Promise.all(Array.from({ length: count }, (_, k) => contract.getPost(count - 1 - k)));
+    const [all, hiddenMap] = await Promise.all([
+      Promise.all(Array.from({ length: count }, (_, k) => contract.getPost(count - 1 - k))),
+      loadHiddenPosts(count),
+    ]);
 
-    const live = all.filter((p) => !p.deleted);
-    const shown = showDeletedChk.checked ? all : live; // bài xóa mềm chỉ hiện khi tick ô
+    const isHidden = (p) => hiddenMap.has(Number(p.id));
+    const live = all.filter((p) => !p.deleted && !isHidden(p));
+    const shown = showDeletedChk.checked ? all : live; // bài xóa mềm / bị ẩn chỉ hiện khi tick ô
+    const deletedCount = all.filter((p) => p.deleted).length;
+    const hiddenCount = all.filter((p) => !p.deleted && isHidden(p)).length;
 
-    postCountDisplay.textContent = `${live.length} bài đang hiển thị (tổng đã đăng: ${count}, đã xóa mềm: ${count - live.length})`;
-    renderPosts(shown);
+    postCountDisplay.textContent = `${live.length} bài đang hiển thị (tổng đã đăng: ${count}, đã xóa mềm: ${deletedCount}` +
+      (moderation ? `, bị quản trị viên ẩn: ${hiddenCount})` : ')');
+    renderPosts(shown, hiddenMap);
     addLog(`Đọc thành công ${shown.length} bài viết từ Smart Contract.`, 'success');
 
     loadHistory(); // cập nhật bảng lịch sử giao dịch (không chờ)
@@ -471,7 +505,7 @@ async function loadPosts() {
 }
 
 // Hiển thị danh sách bài (dùng textContent để không chèn HTML từ nội dung bài)
-function renderPosts(posts) {
+function renderPosts(posts, hiddenMap = new Map()) {
   postsList.innerHTML = '';
 
   if (posts.length === 0) {
@@ -483,8 +517,15 @@ function renderPosts(posts) {
   }
 
   for (const p of posts) {
+    const hiddenBy = hiddenMap.get(Number(p.id));
+    // Bài bị quản trị viên ẩn: người xem thường chỉ thấy thông báo + lý do, không thấy nội dung
+    if (hiddenBy && !canModerate) {
+      postsList.appendChild(hiddenPostCard(p, hiddenBy));
+      continue;
+    }
+
     const card = document.createElement('div');
-    card.className = 'display-box post-card' + (p.deleted ? ' post-deleted' : '');
+    card.className = 'display-box post-card' + (p.deleted ? ' post-deleted' : '') + (hiddenBy ? ' post-hidden' : '');
 
     const title = document.createElement('div');
     title.className = 'post-title';
@@ -493,6 +534,12 @@ function renderPosts(posts) {
       const badge = document.createElement('span');
       badge.className = 'badge-deleted';
       badge.textContent = 'ĐÃ XÓA MỀM';
+      title.appendChild(badge);
+    }
+    if (hiddenBy) {
+      const badge = document.createElement('span');
+      badge.className = 'badge-hidden';
+      badge.textContent = 'ĐÃ ẨN';
       title.appendChild(badge);
     }
 
@@ -505,7 +552,9 @@ function renderPosts(posts) {
     content.className = 'post-content';
     content.textContent = p.content;
 
-    card.append(title, meta, content);
+    card.append(title, meta);
+    if (hiddenBy) card.appendChild(hiddenReasonLine(hiddenBy));
+    card.appendChild(content);
 
     const actions = document.createElement('div');
     actions.className = 'post-actions';
@@ -531,8 +580,259 @@ function renderPosts(posts) {
       actions.append(editBtn, deleteBtn);
     }
 
+    // Quản trị viên: nút Ẩn bài (bài đang hiển thị) hoặc Hiện lại (bài đã ẩn)
+    if (canModerate && !p.deleted) {
+      const modBtn = document.createElement('button');
+      modBtn.className = 'btn btn-outline btn-mod';
+      modBtn.textContent = hiddenBy ? '👁️ Hiện lại' : '🚫 Ẩn bài';
+      modBtn.addEventListener('click', () => (hiddenBy ? unhidePost(p.id) : hidePost(p.id)));
+      actions.appendChild(modBtn);
+    }
+
     card.appendChild(actions);
     postsList.appendChild(card);
+  }
+}
+
+// ---------- Kiểm duyệt nội dung (contract BlogModeration) ----------
+
+// Dòng "Bị ẩn bởi ... · Lý do: ..."
+function hiddenReasonLine(info) {
+  const line = document.createElement('div');
+  line.className = 'hidden-reason';
+  line.textContent = `Bị quản trị viên ${shortAddr(info.moderator)} ẩn lúc ${formatTime(info.at)}. Lý do: ${info.reason}`;
+  return line;
+}
+
+// Thẻ thay thế cho bài bị ẩn (người xem thường): không hiện tiêu đề và nội dung
+function hiddenPostCard(p, info) {
+  const card = document.createElement('div');
+  card.className = 'display-box post-card post-hidden';
+  const title = document.createElement('div');
+  title.className = 'post-title';
+  title.textContent = `#${p.id} · Bài viết đã bị quản trị viên ẩn`;
+  const badge = document.createElement('span');
+  badge.className = 'badge-hidden';
+  badge.textContent = 'ĐÃ ẨN';
+  title.appendChild(badge);
+  const meta = document.createElement('div');
+  meta.className = 'display-label';
+  meta.textContent = `Tác giả ${shortAddr(p.author)} · đăng lúc ${formatTime(p.createdAt)}`;
+  card.append(title, meta, hiddenReasonLine(info));
+  return card;
+}
+
+// Nạp contract kiểm duyệt (gọi khi mở trang, không cần ví). Chưa deploy thì blog chạy như cũ, không có nút Ẩn bài.
+async function initModeration() {
+  if (moderation || !NET.moderationAddress || !MODERATION_ABI) return;
+  try {
+    const code = await readProvider.getCode(NET.moderationAddress);
+    if (code === '0x') {
+      addLog(`Không tìm thấy contract kiểm duyệt trên mạng ${NET.label}.`, 'error');
+      return;
+    }
+    const c = new ethers.Contract(NET.moderationAddress, MODERATION_ABI, readProvider);
+    const blogAddr = await c.blog();
+    if (blogAddr.toLowerCase() !== NET.contractAddress.toLowerCase()) {
+      addLog('Contract kiểm duyệt trỏ tới một blog khác, bỏ qua.', 'warn');
+      return;
+    }
+    moderation = c;
+    modPanel.hidden = false;
+    addLog('Đã nạp contract BlogModeration (kiểm duyệt nội dung).', 'success');
+    if (userAccount) await refreshModRole(); // đã kết nối ví trước khi nạp xong → kiểm tra quyền ngay
+    loadModeration(); // không chờ
+  } catch (error) {
+    console.error(error);
+    addLog(`Không nạp được contract kiểm duyệt: ${errorReason(error)}`, 'error');
+  }
+}
+
+// Bài nào đang bị ẩn: một lần gọi getHiddenFlags cho cả danh sách, lý do lấy từ sự kiện PostHidden.
+// Trả về Map: id bài → { reason, moderator, at, txHash }
+async function loadHiddenPosts(count) {
+  const out = new Map();
+  // Contract kiểm duyệt chỉ áp cho đúng contract blog mặc định (không áp khi tự nạp contract khác ở Cài đặt nâng cao)
+  if (!moderation || count === 0 || String(contract.target).toLowerCase() !== NET.contractAddress.toLowerCase()) return out;
+  try {
+    const flags = await moderation.getHiddenFlags(0, count);
+    const ids = [];
+    flags.forEach((f, i) => { if (f) ids.push(i); });
+    if (ids.length === 0) return out;
+    const evs = await queryLogs(moderation, moderation.filters.PostHidden(), NET.moderationDeployBlock);
+    for (const e of evs) { // sự kiện theo thứ tự thời gian → lần ẩn gần nhất ghi đè lần trước
+      const id = Number(e.args.postId);
+      if (ids.includes(id)) out.set(id, { reason: e.args.reason, moderator: e.args.moderator, at: Number(e.args.hiddenAt), txHash: e.transactionHash });
+    }
+    for (const id of ids) {
+      if (!out.has(id)) out.set(id, { reason: '(chưa đọc được lý do)', moderator: ethers.ZeroAddress, at: 0, txHash: null });
+    }
+  } catch (error) {
+    console.error(error);
+    addLog(`Không đọc được danh sách bài bị ẩn: ${errorReason(error)}`, 'warn');
+  }
+  return out;
+}
+
+// Ví đang kết nối có quyền kiểm duyệt / là chủ sở hữu không → hiện nút Ẩn bài và ô thêm quản trị viên
+async function refreshModRole() {
+  canModerate = false;
+  isModOwner = false;
+  if (moderation && userAccount) {
+    try {
+      const [can, owner] = await Promise.all([moderation.canModerate(userAccount), moderation.owner()]);
+      canModerate = can;
+      isModOwner = owner.toLowerCase() === userAccount.toLowerCase();
+    } catch (error) {
+      console.error(error);
+    }
+  }
+  modYourRole.textContent = !userAccount
+    ? 'Kết nối ví để xem quyền của bạn.'
+    : isModOwner
+      ? 'Bạn là CHỦ SỞ HỮU: ẩn / hiện bài và thêm / bớt quản trị viên.'
+      : canModerate
+        ? 'Bạn là QUẢN TRỊ VIÊN: ẩn / hiện bài bằng nút trên từng bài viết.'
+        : 'Ví của bạn không có quyền kiểm duyệt.';
+  modOwnerBox.hidden = !isModOwner;
+}
+
+// Bảng quản trị viên + nhật ký kiểm duyệt (công khai: ai cũng xem được ai đã ẩn bài nào, lý do gì)
+async function loadModeration() {
+  if (!moderation) return;
+  try {
+    const from = NET.moderationDeployBlock;
+    const [owner, ownerEvs, modEvs, hideEvs, unhideEvs] = await Promise.all([
+      moderation.owner(),
+      queryLogs(moderation, moderation.filters.OwnershipTransferred(), from),
+      queryLogs(moderation, moderation.filters.ModeratorUpdated(), from),
+      queryLogs(moderation, moderation.filters.PostHidden(), from),
+      queryLogs(moderation, moderation.filters.PostUnhidden(), from),
+    ]);
+
+    // Danh sách quản trị viên hiện tại = áp lần lượt các sự kiện ModeratorUpdated
+    const mods = new Map();
+    for (const e of modEvs) mods.set(e.args.account.toLowerCase(), { addr: e.args.account, on: e.args.enabled });
+    const list = [`${addrLabel(owner)} (chủ sở hữu)`];
+    for (const m of mods.values()) {
+      if (m.on && m.addr.toLowerCase() !== owner.toLowerCase()) list.push(addrLabel(m.addr));
+    }
+    modList.textContent = list.join(' · ');
+
+    const rows = [
+      ...ownerEvs.filter((e) => e.args.previousOwner !== ethers.ZeroAddress)
+        .map((e) => ({ type: 'Chuyển chủ sở hữu', ev: e, who: e.args.previousOwner, what: `→ ${shortAddr(e.args.newOwner)}` })),
+      ...modEvs.map((e) => ({ type: e.args.enabled ? 'Thêm quản trị viên' : 'Bớt quản trị viên', ev: e, who: e.args.by, what: shortAddr(e.args.account) })),
+      ...hideEvs.map((e) => ({ type: 'Ẩn bài', ev: e, who: e.args.moderator, what: `#${e.args.postId} · Lý do: ${e.args.reason}`, when: Number(e.args.hiddenAt) })),
+      ...unhideEvs.map((e) => ({ type: 'Hiện lại', ev: e, who: e.args.moderator, what: `#${e.args.postId}`, when: Number(e.args.unhiddenAt) })),
+    ];
+    rows.sort((a, b) => (b.ev.blockNumber - a.ev.blockNumber) || ((b.ev.index ?? 0) - (a.ev.index ?? 0)));
+    for (const r of rows) {
+      if (!r.when) r.when = await getBlockTime(r.ev.blockNumber);
+    }
+
+    modHistory.innerHTML = '';
+    if (rows.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'empty';
+      empty.textContent = 'Chưa có hoạt động kiểm duyệt nào.';
+      modHistory.appendChild(empty);
+      return;
+    }
+    const table = document.createElement('table');
+    table.className = 'history-table';
+    const head = document.createElement('tr');
+    for (const t of ['Việc', 'Nội dung', 'Người thực hiện', 'Thời gian', 'Mã giao dịch']) {
+      const th = document.createElement('th');
+      th.textContent = t;
+      head.appendChild(th);
+    }
+    table.appendChild(head);
+    for (const r of rows.slice(0, 100)) {
+      const tr = document.createElement('tr');
+      [r.type, r.what, addrLabel(r.who), formatTime(r.when)].forEach((c, i) => {
+        const td = document.createElement('td');
+        td.textContent = c;
+        if (i === 1) td.className = 'note-cell';
+        tr.appendChild(td);
+      });
+      const tdHash = document.createElement('td');
+      tdHash.appendChild(txChip(r.ev.transactionHash));
+      tr.appendChild(tdHash);
+      table.appendChild(tr);
+    }
+    modHistory.appendChild(table);
+  } catch (error) {
+    console.error(error);
+    addLog(`Lỗi khi đọc nhật ký kiểm duyệt: ${errorReason(error)}`, 'error');
+  }
+}
+
+// Ẩn một bài (quản trị viên), lý do ghi công khai trên blockchain
+async function hidePost(id) {
+  const reason = (prompt(`Lý do ẩn bài #${id} (ghi công khai trên blockchain, tối đa 200 byte):`, 'Nội dung không phù hợp') || '').trim();
+  if (!reason) return;
+  if (new TextEncoder().encode(reason).length > 200) {
+    alert('Lý do tối đa 200 byte!');
+    return;
+  }
+  if (!(await ensureWallet())) return;
+  try {
+    submitPostBtn.disabled = true;
+    addLog(`Chuẩn bị gửi giao dịch hidePost(${id}, "${reason}")...`, 'info');
+    const c = moderation.connect(signer);
+    await sendTx('hidePost', c.hidePost(id, reason, await txOptions(c.hidePost, [id, reason])));
+    loadModeration();
+  } catch (error) {
+    handleTxError(error);
+  } finally {
+    submitPostBtn.disabled = false;
+    submitPostBtn.textContent = editingPostId === null ? SUBMIT_TEXT_CREATE : SUBMIT_TEXT_EDIT;
+  }
+}
+
+// Hiện lại một bài đã ẩn (quản trị viên)
+async function unhidePost(id) {
+  if (!confirm(`Hiện lại bài #${id} cho mọi người xem?`)) return;
+  if (!(await ensureWallet())) return;
+  try {
+    submitPostBtn.disabled = true;
+    addLog(`Chuẩn bị gửi giao dịch unhidePost(${id})...`, 'info');
+    const c = moderation.connect(signer);
+    await sendTx('unhidePost', c.unhidePost(id, await txOptions(c.unhidePost, [id])));
+    loadModeration();
+  } catch (error) {
+    handleTxError(error);
+  } finally {
+    submitPostBtn.disabled = false;
+    submitPostBtn.textContent = editingPostId === null ? SUBMIT_TEXT_CREATE : SUBMIT_TEXT_EDIT;
+  }
+}
+
+// Thêm / bớt quản trị viên (chỉ chủ sở hữu)
+async function setModerator(enabled) {
+  const addr = modAddressInput.value.trim();
+  if (!ethers.isAddress(addr)) {
+    alert('Địa chỉ ví không đúng định dạng (0x...)');
+    return;
+  }
+  if (!(await ensureWallet())) return;
+  const label = enabled ? 'thêm' : 'bớt';
+  try {
+    modAddBtn.disabled = modRemoveBtn.disabled = true;
+    addLog(`Chuẩn bị gửi giao dịch setModerator(${addr}, ${enabled}) để ${label} quản trị viên...`, 'info');
+    const c = moderation.connect(signer);
+    const tx = await c.setModerator(addr, enabled, await txOptions(c.setModerator, [addr, enabled]));
+    addLog(`Giao dịch setModerator đã được phát đi! TX Hash: ${tx.hash}`, 'info');
+    const receipt = await tx.wait();
+    addLog(`✅ Đã ${label} quản trị viên ${shortAddr(addr)} (Block #${receipt.blockNumber}, phí ${ethers.formatEther(receipt.fee)} ETH)`, 'success', true);
+    modAddressInput.value = '';
+    await updateWalletInfo();
+    loadModeration();
+  } catch (error) {
+    handleTxError(error);
+  } finally {
+    modAddBtn.disabled = modRemoveBtn.disabled = false;
   }
 }
 
@@ -951,6 +1251,24 @@ async function pollNewEvents() {
         if (e.eventName === 'PostDeleted') addLog(`⚡ [Event PostDeleted] Bài #${a.id} bị xóa bởi ${shortAddr(a.author)}`, 'success');
       }
       if (evs.length) loadPosts();
+    }
+    if (moderation) {
+      const evs = await moderation.queryFilter('*', from, latest);
+      for (const e of evs) {
+        const a = e.args;
+        if (e.eventName === 'PostHidden') addLog(`⚡ [Event PostHidden] Bài #${a.postId} bị ẩn bởi ${shortAddr(a.moderator)}. Lý do: ${a.reason}`, 'success');
+        if (e.eventName === 'PostUnhidden') addLog(`⚡ [Event PostUnhidden] Bài #${a.postId} được hiện lại bởi ${shortAddr(a.moderator)}`, 'success');
+        if (e.eventName === 'ModeratorUpdated') addLog(`⚡ [Event ModeratorUpdated] ${shortAddr(a.account)} ${a.enabled ? 'trở thành' : 'thôi làm'} quản trị viên`, 'success');
+        if (e.eventName === 'OwnershipTransferred') addLog(`⚡ [Event OwnershipTransferred] Chủ sở hữu mới: ${shortAddr(a.newOwner)}`, 'success');
+      }
+      if (evs.length) {
+        loadModeration();
+        if (evs.some((e) => e.eventName === 'ModeratorUpdated' || e.eventName === 'OwnershipTransferred')) {
+          refreshModRole().then(() => { if (contract) loadPosts(); });
+        } else if (contract) {
+          loadPosts();
+        }
+      }
     }
     if (payments) {
       const evs = await payments.queryFilter(payments.filters.Transferred(), from, latest);
@@ -1538,6 +1856,9 @@ docHashInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') checkPa
 docRegisterBtn.addEventListener('click', registerDocument);
 docRevokeBtn.addEventListener('click', revokeDocument);
 refreshDocsBtn.addEventListener('click', loadDocuments);
+modAddBtn.addEventListener('click', () => setModerator(true));
+modRemoveBtn.addEventListener('click', () => setModerator(false));
+refreshModBtn.addEventListener('click', loadModeration);
 
 // Bản cũ cho phép lưu khóa Pinata trong trình duyệt; chức năng đã bỏ nên xóa khóa đó đi (nếu có)
 try { localStorage.removeItem('blogchain-pinata-jwt'); } catch {}
@@ -1559,7 +1880,7 @@ if (window.ethereum) {
       updateWalletInfo();
       addLog(`Chuyển sang tài khoản ví: ${userAccount}`, 'info');
       resetForm();
-      if (contract) loadPosts(); // vẽ lại nút Sửa/Xóa theo tác giả mới
+      refreshModRole().then(() => { if (contract) loadPosts(); }); // vẽ lại nút Sửa/Xóa/Ẩn theo ví mới
       if (payments) loadTransfers(); // cập nhật nhãn "(bạn)" và bộ lọc "giao dịch của tôi"
       if (docs) loadDocuments();
       if (currentDoc) checkDocument();
@@ -1575,7 +1896,7 @@ if (window.ethereum) {
 function renderContractLinks() {
   const box = document.getElementById('contractLinks');
   box.textContent = '';
-  const list = [['BlogChain', NET.contractAddress], ['Payments', NET.paymentsAddress], ['DocumentRegistry', NET.docsAddress]].filter(([, addr]) => addr);
+  const list = [['BlogChain', NET.contractAddress], ['Payments', NET.paymentsAddress], ['DocumentRegistry', NET.docsAddress], ['BlogModeration', NET.moderationAddress]].filter(([, addr]) => addr);
   list.forEach(([name, addr], i) => {
     if (i > 0) box.append(' · ');
     if (NET.sourceViewer || NET.explorer) {
@@ -1604,7 +1925,12 @@ function renderContractLinks() {
   }
   renderContractLinks();
   if (NET.contractAddress) contractAddressInput.value = NET.contractAddress;
-  // Nạp 3 contract cùng lúc thay vì lần lượt (RPC công khai chậm, nạp lần lượt mất ~8 giây)
-  await Promise.all([NET.contractAddress ? loadContract() : null, initPayments(), initDocs()]);
+  // Nạp các contract cùng lúc thay vì lần lượt (RPC công khai chậm, nạp lần lượt mất ~8 giây).
+  // Riêng blog: nạp contract kiểm duyệt TRƯỚC để bài bị ẩn không hiện ra trong giây lát.
+  const initBlog = async () => {
+    await initModeration();
+    if (NET.contractAddress) await loadContract();
+  };
+  await Promise.all([initBlog(), initPayments(), initDocs()]);
   setInterval(pollNewEvents, POLL_MS);
 })();

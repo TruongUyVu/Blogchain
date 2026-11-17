@@ -12,16 +12,19 @@ blogchain-truffle/
 │   ├── Migrations.sol                 # contract chuẩn của Truffle
 │   ├── BlogChain.sol                  # blog: đăng, sửa, xóa mềm, đọc bài (chỉ tác giả sửa / xóa)
 │   ├── Payments.sol                   # chuyển ETH giữa các ví kèm ghi chú, phát sự kiện Transferred
-│   └── DocumentRegistry.sol           # xác thực tài liệu: đăng ký / thu hồi mã băm SHA-256 của file
+│   ├── DocumentRegistry.sol           # xác thực tài liệu: đăng ký / thu hồi mã băm SHA-256 của file
+│   └── BlogModeration.sol             # kiểm duyệt: chủ sở hữu + quản trị viên ẩn / hiện bài của BlogChain
 ├── migrations/
 │   ├── 1_initial_migration.js
 │   ├── 2_deploy_blogchain.js
 │   ├── 3_deploy_payments.js
-│   └── 4_deploy_document_registry.js
+│   ├── 4_deploy_document_registry.js
+│   └── 5_deploy_blog_moderation.js    # trỏ tới BlogChain đã deploy, không deploy lại blog
 ├── test/
 │   ├── blogchain.test.js              # 9 test
 │   ├── payments.test.js               # 6 test
-│   └── documentRegistry.test.js       # 8 test
+│   ├── documentRegistry.test.js       # 8 test
+│   └── blogModeration.test.js         # 9 test
 ├── scripts/
 │   ├── export-contracts.js            # ghi ABI + địa chỉ + block deploy ra ../dapp/contracts.json
 │   └── verify-contracts.js            # xác minh mã nguồn trên Sourcify / Etherscan
@@ -53,11 +56,11 @@ notepad .env
 
 | Lệnh | Việc làm |
 |---|---|
-| `npm test` | Chạy 23 test trên Ganache (`truffle test`, cần mở Ganache) |
+| `npm test` | Chạy 32 test trên Ganache (`truffle test`, cần mở Ganache) |
 | `npm run deploy:ganache` | Deploy lại toàn bộ lên Ganache rồi cập nhật `../dapp/contracts.json` |
 | `npm run deploy:sepolia` | Deploy các migration chưa chạy lên Sepolia rồi cập nhật `../dapp/contracts.json` |
 | `npm run export` | Chỉ cập nhật `../dapp/contracts.json` từ `build/contracts` (sau khi deploy bằng `truffle migrate` trực tiếp) |
-| `npm run verify` | Xác minh mã nguồn các contract deploy khi optimizer **bật** |
+| `npm run verify` | Xác minh mã nguồn các contract deploy khi optimizer **bật** (BlogModeration và các contract sau này) |
 | `npm run verify:legacy` | Xác minh 3 contract đầu tiên (deploy khi optimizer còn **tắt**) |
 
 ## Chạy thử trên máy với Ganache
@@ -97,8 +100,8 @@ Settings → Advanced → Clear activity tab data để tránh lỗi nonce.
 npm run deploy:sepolia
 ```
 
-   Chỉ deploy **một** contract mới mà không đụng contract cũ (ví dụ migration số 5):
-   `truffle migrate -f 5 --to 5 --network sepolia` rồi `npm run export`.
+   Truffle chỉ chạy các migration **chưa chạy** trên mạng đó, contract cũ giữ nguyên. Muốn chạy đúng một migration
+   (ví dụ số 6): `truffle migrate -f 6 --to 6 --network sepolia` rồi `npm run export`.
 3. Giao diện tự đọc địa chỉ, block deploy và ABI từ `../dapp/contracts.json`, **không chép tay vào `app.js`**.
 4. Xác minh mã nguồn contract mới: `npm run verify`.
 5. **Tăng số phiên bản** để trình duyệt không dùng bản lưu tạm cũ (GitHub Pages cho lưu 10 phút):
@@ -114,6 +117,7 @@ Contract đang dùng trên Sepolia:
 | BlogChain | `0x1b59c8aAAa7a258eafe7c708Fc27b6d4e2a7e7F0` | tắt |
 | Payments | `0xaDBF8d7370383A83Eef6d3844b30f285Fc9f7e1c` | tắt |
 | DocumentRegistry | `0xb6a99853dC40129d69D3A0e27438Fd4305A9654A` | tắt |
+| BlogModeration | `0x232959C6b36B7c99FDbe4b48DB6687DF915F6a9d` | bật |
 
 ## Gas và phí
 
@@ -126,6 +130,7 @@ Contract đang dùng trên Sepolia:
 | BlogChain | ~9,9 triệu gas | ~6,1 triệu gas |
 | Payments | ~3,6 triệu gas | ~1,8 triệu gas |
 | DocumentRegistry | ~5,5 triệu gas | ~2,5 triệu gas |
+| BlogModeration | – | ~5,0 triệu gas |
 
 - Deploy dùng tip `maxPriorityFeePerGas` = 0,05 gwei (Truffle mặc định 2,5 gwei, đắt gấp ~50 lần) và trần
   `maxFeePerGas` = 0,5 gwei. Đừng đặt trần quá cao: mạng yêu cầu số dư ≥ gas tối đa × trần, thiếu thì Truffle báo nhầm
@@ -138,12 +143,26 @@ Contract đang dùng trên Sepolia:
 Để ai cũng đọc được mã Solidity và kiểm chứng nó khớp với mã đang chạy trên chuỗi. `scripts/verify-contracts.js`
 biên dịch, so mã với mã trên chuỗi, **khớp 100% mới gửi đi**.
 
-- **Sourcify** (không cần khóa): cả 3 contract đã xác minh mức `exact_match`, xem tại
+- **Sourcify** (không cần khóa): cả 4 contract đã xác minh mức `exact_match`, xem tại
   `https://repo.sourcify.dev/11155111/<địa chỉ contract>` (chân trang DApp có link sẵn).
 - **Etherscan**: cần `ETHERSCAN_API_KEY` trong `.env` (etherscan.io → API Keys). Etherscan **không** tự lấy kết quả
   từ Sourcify nên phải xác minh riêng: thêm khóa rồi chạy lại `npm run verify:legacy` / `npm run verify`.
 - 3 contract đầu được deploy khi optimizer còn tắt: `verify:legacy` biên dịch lại với `SOLC_OPTIMIZER=off`
   vào `build/verify-legacy` để khớp đúng như lúc deploy.
+- Contract có biến `immutable` (ví dụ địa chỉ blog trong `BlogModeration`): giá trị được ghi vào mã lúc deploy, script
+  tự xóa các vị trí đó về 0 trước khi so với mã biên dịch.
+
+## Kiểm duyệt nội dung (`BlogModeration`)
+
+- Contract đứng riêng, trỏ tới `BlogChain` đã deploy (truyền địa chỉ lúc deploy): **không phải deploy lại blog**, bài cũ
+  vẫn kiểm duyệt được.
+- **Chủ sở hữu** = ví deploy (`PRIVATE_KEY`). Chủ sở hữu thêm / bớt **quản trị viên** (`setModerator`), chuyển quyền
+  chủ sở hữu (`transferOwnership`). Chủ sở hữu và quản trị viên ẩn bài (`hidePost(id, lý do)`) và hiện lại (`unhidePost`).
+- "Ẩn" chỉ là cờ để giao diện không hiện nội dung; dữ liệu bài vẫn nằm trên chuỗi. Lý do ẩn nằm trong sự kiện
+  `PostHidden`; giao diện đọc trạng thái ẩn của cả danh sách bằng **một** lệnh `getHiddenFlags(0, số bài)`.
+- Giao diện: ví có quyền thấy nút **Ẩn bài / Hiện lại** trên từng bài; khung **Kiểm duyệt nội dung** (cuối thẻ Blog)
+  hiện danh sách quản trị viên, ô thêm / bớt quản trị viên (chỉ chủ sở hữu) và nhật ký kiểm duyệt công khai.
+- Chưa deploy `BlogModeration` trên mạng đang dùng (không có trong `contracts.json`) thì blog chạy như cũ, không có kiểm duyệt.
 
 ## Giao diện (`../dapp`) – những điều cần biết
 

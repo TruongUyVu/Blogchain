@@ -26,7 +26,7 @@ const args = process.argv.slice(2);
 const buildIdx = args.indexOf("--build");
 const BUILD_DIR = buildIdx >= 0 ? path.resolve(ROOT, args[buildIdx + 1]) : MAIN_BUILD;
 const names = args.filter((a, i) => !a.startsWith("--") && args[i - 1] !== "--build");
-const CONTRACTS = names.length ? names : ["BlogChain", "Payments", "DocumentRegistry"];
+const CONTRACTS = names.length ? names : ["BlogChain", "Payments", "DocumentRegistry", "BlogModeration"];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -126,8 +126,16 @@ async function verifyEtherscan(address, job) {
     const job = standardJsonInput(artifact);
     console.log(`\n${name} ${deployed.address} (optimizer ${job.optimizer ? "bật" : "tắt"})`);
 
-    const onChain = await rpc("eth_getCode", [deployed.address, "latest"]);
-    if (onChain.toLowerCase() !== artifact.deployedBytecode.toLowerCase()) {
+    let onChain = (await rpc("eth_getCode", [deployed.address, "latest"])).toLowerCase();
+    // Biến immutable (ví dụ địa chỉ blog trong BlogModeration) được ghi vào mã lúc deploy, còn mã biên dịch để số 0
+    // ở các vị trí đó → xóa về 0 trên mã lấy từ chuỗi trước khi so sánh
+    for (const refs of Object.values(artifact.immutableReferences || {})) {
+      for (const { start, length } of refs) {
+        const s = 2 + start * 2;
+        onChain = onChain.slice(0, s) + "0".repeat(length * 2) + onChain.slice(s + length * 2);
+      }
+    }
+    if (onChain !== artifact.deployedBytecode.toLowerCase()) {
       console.log("  KHÔNG gửi: mã biên dịch khác mã đang chạy trên chuỗi (sai thiết lập biên dịch?)");
       continue;
     }

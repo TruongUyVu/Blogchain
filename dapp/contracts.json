@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-17T03:51:09.530Z",
+  "generatedAt": "2026-11-17T08:45:43.490Z",
   "abi": {
     "BlogChain": [
       {
@@ -88,7 +88,8 @@
           }
         ],
         "stateMutability": "view",
-        "type": "function"
+        "type": "function",
+        "constant": true
       },
       {
         "inputs": [],
@@ -101,7 +102,8 @@
           }
         ],
         "stateMutability": "view",
-        "type": "function"
+        "type": "function",
+        "constant": true
       },
       {
         "inputs": [
@@ -174,7 +176,8 @@
           }
         ],
         "stateMutability": "view",
-        "type": "function"
+        "type": "function",
+        "constant": true
       },
       {
         "inputs": [
@@ -230,7 +233,8 @@
           }
         ],
         "stateMutability": "view",
-        "type": "function"
+        "type": "function",
+        "constant": true
       }
     ],
     "Payments": [
@@ -476,21 +480,337 @@
         "stateMutability": "view",
         "type": "function"
       }
+    ],
+    "BlogModeration": [
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "blogAddress",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "constructor"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "bool",
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "by",
+            "type": "address"
+          }
+        ],
+        "name": "ModeratorUpdated",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "previousOwner",
+            "type": "address"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "newOwner",
+            "type": "address"
+          }
+        ],
+        "name": "OwnershipTransferred",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "uint256",
+            "name": "postId",
+            "type": "uint256"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "moderator",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "string",
+            "name": "reason",
+            "type": "string"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "hiddenAt",
+            "type": "uint256"
+          }
+        ],
+        "name": "PostHidden",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "uint256",
+            "name": "postId",
+            "type": "uint256"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "moderator",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "unhiddenAt",
+            "type": "uint256"
+          }
+        ],
+        "name": "PostUnhidden",
+        "type": "event"
+      },
+      {
+        "inputs": [],
+        "name": "MAX_REASON_LENGTH",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function",
+        "constant": true
+      },
+      {
+        "inputs": [],
+        "name": "blog",
+        "outputs": [
+          {
+            "internalType": "contract IBlogChain",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function",
+        "constant": true
+      },
+      {
+        "inputs": [],
+        "name": "hiddenCount",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function",
+        "constant": true
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "name": "isModerator",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function",
+        "constant": true
+      },
+      {
+        "inputs": [],
+        "name": "owner",
+        "outputs": [
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function",
+        "constant": true
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "enabled",
+            "type": "bool"
+          }
+        ],
+        "name": "setModerator",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "newOwner",
+            "type": "address"
+          }
+        ],
+        "name": "transferOwnership",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "postId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "string",
+            "name": "reason",
+            "type": "string"
+          }
+        ],
+        "name": "hidePost",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "postId",
+            "type": "uint256"
+          }
+        ],
+        "name": "unhidePost",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "postId",
+            "type": "uint256"
+          }
+        ],
+        "name": "isHidden",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function",
+        "constant": true
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "from",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "count",
+            "type": "uint256"
+          }
+        ],
+        "name": "getHiddenFlags",
+        "outputs": [
+          {
+            "internalType": "bool[]",
+            "name": "flags",
+            "type": "bool[]"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function",
+        "constant": true
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "name": "canModerate",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function",
+        "constant": true
+      }
     ]
   },
   "networks": {
     "5777": {
       "BlogChain": {
         "address": "0xD5cde48D5e989b237bA38BA3E3F0064774f0E921",
-        "deployBlock": 3
+        "deployBlock": 0
       },
       "Payments": {
         "address": "0xcb21621daE54bbd31c2eb4B6040c3672DF3FE5bf",
-        "deployBlock": 30
+        "deployBlock": 0
       },
       "DocumentRegistry": {
         "address": "0xCF922f23a07f6b221c58917067f17C029406E982",
-        "deployBlock": 56
+        "deployBlock": 0
       }
     },
     "11155111": {
@@ -505,6 +825,10 @@
       "DocumentRegistry": {
         "address": "0xb6a99853dC40129d69D3A0e27438Fd4305A9654A",
         "deployBlock": 12151675
+      },
+      "BlogModeration": {
+        "address": "0x232959C6b36B7c99FDbe4b48DB6687DF915F6a9d",
+        "deployBlock": 12153299
       }
     }
   }

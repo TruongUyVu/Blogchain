@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <!-- ?v=...: đổi số này mỗi lần sửa CSS/JS để trình duyệt tải bản mới thay vì bản lưu tạm (GitHub Pages lưu 10 phút) -->
-  <link rel="stylesheet" href="style.css?v=11" />
+  <link rel="stylesheet" href="style.css?v=12" />
   <!-- Ethers.js v6 CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
 </head>
@@ -142,7 +142,7 @@
             </button>
           </div>
           <div id="postCountDisplay" class="muted">Đang tải bài viết từ blockchain...</div>
-          <label class="check-row"><input type="checkbox" id="showDeletedChk" /> Hiện cả bài đã xóa</label>
+          <label class="check-row"><input type="checkbox" id="showDeletedChk" /> Hiện cả bài đã xóa hoặc bị ẩn</label>
           <div id="postsList" class="posts-list"></div>
         </div>
       </div>
@@ -159,6 +159,41 @@
         <p class="card-desc">Mọi lần đăng, sửa, xóa bài đều được ghi trên blockchain. Bấm vào mã giao dịch để sao chép.</p>
         <div id="historyList" class="table-wrap"><div class="empty">Đang tải lịch sử...</div></div>
       </div>
+
+      <!-- Kiểm duyệt nội dung (contract BlogModeration); ẩn cho tới khi nạp được contract -->
+      <details id="modPanel" class="card advanced mod-panel" hidden>
+        <summary>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Kiểm duyệt nội dung
+        </summary>
+        <p class="card-desc">
+          Giảng viên (chủ sở hữu) và các quản trị viên được <strong>ẩn bài không phù hợp</strong> kèm lý do.
+          Bài bị ẩn vẫn nằm vĩnh viễn trên blockchain, trang web chỉ không hiện nội dung nữa.
+          Mọi lần ẩn / hiện lại đều được ghi công khai ở bảng dưới.
+        </p>
+        <div class="mod-role">
+          <div><span class="wallet-label">Quyền của bạn</span><div id="modYourRole">Kết nối ví để xem quyền của bạn.</div></div>
+          <div><span class="wallet-label">Quản trị viên</span><div id="modList" class="mono">Đang tải...</div></div>
+        </div>
+
+        <div id="modOwnerBox" class="mod-owner" hidden>
+          <label for="modAddressInput">Thêm / bớt quản trị viên (ví dụ trợ giảng): địa chỉ ví 0x...</label>
+          <input type="text" id="modAddressInput" placeholder="0x..." class="input-field mono" />
+          <div class="mod-owner-actions">
+            <button id="modAddBtn" class="btn btn-secondary">Thêm quản trị viên</button>
+            <button id="modRemoveBtn" class="btn btn-ghost">Bớt quyền</button>
+          </div>
+        </div>
+
+        <div class="card-head">
+          <h3 class="card-subtitle">Nhật ký kiểm duyệt</h3>
+          <button id="refreshModBtn" class="btn btn-ghost btn-sm">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+            <span>Tải lại</span>
+          </button>
+        </div>
+        <div id="modHistory" class="table-wrap"><div class="empty">Đang tải...</div></div>
+      </details>
 
       <!-- Cài đặt nâng cao: địa chỉ contract -->
       <details class="card advanced">
@@ -355,6 +390,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=13"></script>
+  <script src="app.js?v=14"></script>
 </body>
 </html>
