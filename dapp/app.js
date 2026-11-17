@@ -619,10 +619,8 @@ async function loadPosts() {
     addLog('Đang gọi getPostCount() và getPost() từ Blockchain...', 'info');
     const count = Number(await contract.getPostCount());
 
-    const all = [];
-    for (let i = count - 1; i >= 0; i--) {
-      all.push(await contract.getPost(i));
-    }
+    // Đọc mọi bài cùng lúc (mới nhất trước); ethers tự gộp các lệnh gọi thành ít yêu cầu RPC
+    const all = await Promise.all(Array.from({ length: count }, (_, k) => contract.getPost(count - 1 - k)));
 
     const live = all.filter((p) => !p.deleted);
     const shown = showDeletedChk.checked ? all : live; // bài xóa mềm chỉ hiện khi tick ô
@@ -1434,7 +1432,9 @@ async function checkDocument() {
   docResult.textContent = 'Đang kiểm tra trên blockchain...';
 
   if (!docs) {
-    docResult.textContent = `Chức năng xác thực tài liệu chưa sẵn sàng trên mạng ${NET.label}.`;
+    docResult.textContent = NET.docsAddress
+      ? 'Đang kết nối tới blockchain, vui lòng thử lại sau vài giây.'
+      : `Chức năng xác thực tài liệu chưa được deploy trên mạng ${NET.label}.`;
     return;
   }
 
@@ -1712,8 +1712,7 @@ if (window.ethereum) {
 
 // Mở trang là đọc dữ liệu ngay qua RPC công khai, chưa cần kết nối ví
 (async () => {
-  if (NET.contractAddress) await loadContract();
-  await initPayments();
-  await initDocs();
+  // Nạp 3 contract cùng lúc thay vì lần lượt (RPC công khai chậm, nạp lần lượt mất ~8 giây)
+  await Promise.all([NET.contractAddress ? loadContract() : null, initPayments(), initDocs()]);
   setInterval(pollNewEvents, POLL_MS);
 })();
