@@ -1265,7 +1265,7 @@ async function lookupTx() {
 
 // Hiển thị tên mạng và điền sẵn địa chỉ contract theo NET
 switchNetworkBtn.querySelector('span').textContent = `Chuyển sang ${NET.label}`;
-document.getElementById('networkSubtitle').textContent = `Blog và chuyển tiền trên mạng ${NET.label}`;
+document.getElementById('networkSubtitle').textContent = `Mọi bài viết và giao dịch được ghi công khai trên mạng ${NET.label}, không thể sửa lén.`;
 if (NET.contractAddress) contractAddressInput.value = NET.contractAddress;
 addLog(`Sẵn sàng. DApp dùng mạng ${NET.label} (Chain ID ${NET.chainId}). Bấm "Kết nối ví MetaMask" để bắt đầu.`, 'info');
 
