@@ -7,7 +7,12 @@
 const fs = require("fs");
 const path = require("path");
 
-const CONTRACTS = ["BlogChain", "Payments", "DocumentRegistry", "BlogModeration"];
+// Tự lấy danh sách contract từ các file .sol ở ngay thư mục contracts/ (bỏ Migrations; thư mục con như
+// contracts/lib/ dành cho thư viện dùng chung nên không xuất). Thêm contract mới thì không phải sửa script này.
+const CONTRACTS = fs
+  .readdirSync(path.join(__dirname, "..", "contracts"))
+  .filter((f) => f.endsWith(".sol") && f !== "Migrations.sol")
+  .map((f) => f.replace(/\.sol$/, ""));
 
 // Mạng cần xuất: id mạng trong artifact của Truffle → RPC để tra số block lúc deploy
 const NETWORKS = {

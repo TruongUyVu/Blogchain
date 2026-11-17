@@ -34,6 +34,8 @@
   --verify-soft: #e3f5f2;
   --logs: #475569;
   --logs-soft: #f1f5f9;
+  --lending: #6d28d9; /* dành sẵn cho thẻ Cho vay P2P (docs/P2P-THIET-KE.md) */
+  --lending-soft: #f3effe;
 
   --warning: #b45309;
   --warning-soft: #fef3c7;
@@ -353,6 +355,7 @@ code {
 .tab-lookup[aria-selected="true"] { background: var(--lookup); color: #fff; }
 .tab-verify[aria-selected="true"] { background: var(--verify); color: #fff; }
 .tab-logs[aria-selected="true"] { background: var(--logs); color: #fff; }
+.tab-lending[aria-selected="true"] { background: var(--lending); color: #fff; }
 
 /* Màu chủ đạo của từng khu vực: viền trên của thẻ card */
 .theme-blog { --accent: var(--blog); --accent-soft: var(--blog-soft); }
@@ -360,6 +363,7 @@ code {
 .theme-lookup { --accent: var(--lookup); --accent-soft: var(--lookup-soft); }
 .theme-verify { --accent: var(--verify); --accent-soft: var(--verify-soft); }
 .theme-logs { --accent: var(--logs); --accent-soft: var(--logs-soft); }
+.theme-lending { --accent: var(--lending); --accent-soft: var(--lending-soft); }
 
 /* ---------- Card ---------- */
 .card {

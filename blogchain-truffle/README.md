@@ -24,7 +24,9 @@ blogchain-truffle/
 │   ├── blogchain.test.js              # 9 test
 │   ├── payments.test.js               # 6 test
 │   ├── documentRegistry.test.js       # 8 test
-│   └── blogModeration.test.js         # 9 test
+│   ├── blogModeration.test.js         # 9 test
+│   ├── helpers.js                     # hàm dùng chung: expectRevert, increaseTime (tua nhanh thời gian), txCost, balanceOf
+│   └── helpers.test.js                # 2 test cho chính các hàm hỗ trợ
 ├── scripts/
 │   ├── export-contracts.js            # ghi ABI + địa chỉ + block deploy ra ../dapp/contracts.json
 │   └── verify-contracts.js            # xác minh mã nguồn trên Sourcify / Etherscan
@@ -56,7 +58,7 @@ notepad .env
 
 | Lệnh | Việc làm |
 |---|---|
-| `npm test` | Chạy 32 test trên Ganache (`truffle test`, cần mở Ganache) |
+| `npm test` | Chạy 34 test trên Ganache (`truffle test`, cần mở Ganache) |
 | `npm run deploy:ganache` | Deploy lại toàn bộ lên Ganache rồi cập nhật `../dapp/contracts.json` |
 | `npm run deploy:sepolia` | Deploy các migration chưa chạy lên Sepolia rồi cập nhật `../dapp/contracts.json` |
 | `npm run export` | Chỉ cập nhật `../dapp/contracts.json` từ `build/contracts` (sau khi deploy bằng `truffle migrate` trực tiếp) |
@@ -74,7 +76,7 @@ npm run deploy:ganache
 npm test
 ```
 
-3. Cho giao diện dùng Ganache: trong `../dapp/app.js` đổi `const NET = NETWORKS.sepolia;` thành
+3. Cho giao diện dùng Ganache: trong `../dapp/js/core.js` đổi `const NET = NETWORKS.sepolia;` thành
    `const NET = NETWORKS.ganache;`. **Đổi lại trước khi commit**, vì trang công khai phải dùng Sepolia.
 4. Bấm đúp `../chay-dapp.bat` (giữ cửa sổ mở), vào `http://localhost:3000`, nhấn Ctrl+F5.
 5. MetaMask: thêm mạng Ganache (Chain ID 1337, RPC `http://127.0.0.1:7545`; nút **Chuyển sang Ganache Local**
@@ -102,11 +104,11 @@ npm run deploy:sepolia
 
    Truffle chỉ chạy các migration **chưa chạy** trên mạng đó, contract cũ giữ nguyên. Muốn chạy đúng một migration
    (ví dụ số 6): `truffle migrate -f 6 --to 6 --network sepolia` rồi `npm run export`.
-3. Giao diện tự đọc địa chỉ, block deploy và ABI từ `../dapp/contracts.json`, **không chép tay vào `app.js`**.
+3. Giao diện tự đọc địa chỉ, block deploy và ABI từ `../dapp/contracts.json`, **không chép tay vào mã giao diện**.
 4. Xác minh mã nguồn contract mới: `npm run verify`.
 5. **Tăng số phiên bản** để trình duyệt không dùng bản lưu tạm cũ (GitHub Pages cho lưu 10 phút):
-   - sửa `contracts.json` → tăng `?v=` trong `CONTRACTS_JSON_URL` (`../dapp/app.js`);
-   - sửa `app.js` / `style.css` → tăng `?v=` tương ứng trong `../dapp/index.html`.
+   - sửa `contracts.json` → tăng `?v=` trong `CONTRACTS_JSON_URL` (`../dapp/js/core.js`);
+   - sửa file `.js` / `style.css` của giao diện → tăng `?v=` tương ứng trong `../dapp/index.html`.
 6. Commit, push lên nhánh `main`; khoảng 1 phút sau trang https://truonguyvu.github.io/Blogchain/dapp/ có bản mới
    (GitHub Pages: Settings → Pages → Deploy from a branch → `main` / root).
 
@@ -164,9 +166,85 @@ biên dịch, so mã với mã trên chuỗi, **khớp 100% mới gửi đi**.
   hiện danh sách quản trị viên, ô thêm / bớt quản trị viên (chỉ chủ sở hữu) và nhật ký kiểm duyệt công khai.
 - Chưa deploy `BlogModeration` trên mạng đang dùng (không có trong `contracts.json`) thì blog chạy như cũ, không có kiểm duyệt.
 
+## Giao diện (`../dapp`): cấu trúc module
+
+```
+dapp/
+├── index.html          # khung trang: các thẻ chức năng + thứ tự nạp script
+├── style.css           # giao diện; màu từng thẻ: --blog, --transfer, --verify, --lookup, --logs, --lending (dành sẵn)
+├── contracts.json      # ABI + địa chỉ + block deploy (npm run export tạo ra, không sửa tay)
+├── js/
+│   ├── core.js         # LÕI: mạng & RPC, kho contract, ví, runTx, nhật ký, theo dõi sự kiện, registerModule
+│   ├── blog.js         # thẻ Blog (BlogChain + BlogModeration)
+│   ├── transfer.js     # thẻ Chuyển tiền (Payments)
+│   ├── docs.js         # thẻ Xác thực (DocumentRegistry)
+│   └── lookup.js       # thẻ Tra cứu (mọi giao dịch)
+└── app.js              # khởi động: startApp(), nạp SAU CÙNG
+```
+
+Mỗi chức năng là một **module** tự đăng ký với lõi. Lõi lo phần chung (kết nối ví, đổi tài khoản, đổi nguồn RPC,
+theo dõi block mới, chân trang, thẻ Tra cứu), module chỉ lo nghiệp vụ của mình.
+
+### Thêm một chức năng mới (ví dụ cho vay P2P)
+
+1. Contract: `contracts/TenContract.sol`, migration số tiếp theo, test (dùng `test/helpers.js`). `npm run export` tự
+   đưa mọi contract trong `contracts/` (trừ `Migrations`) vào `contracts.json`; `npm run verify` cũng vậy.
+2. Giao diện: thêm nút thẻ (`<button class="tab tab-ten" data-tab="ten">`) và khung (`<section class="tab-panel theme-ten"
+   data-panel="ten" hidden>`) vào `index.html`, thêm `<script src="js/ten.js?v=1"></script>` **trước** dòng nạp `app.js`.
+3. Tạo `js/ten.js` theo khung sau (tên biến / hàm toàn cục phải khác các file khác vì các file dùng chung phạm vi):
+
+```js
+let lending = null; // contract của module, gắn readProvider để đọc
+
+async function initLending() {
+  lending = await loadReadContract('P2PLending'); // null nếu chưa deploy trên mạng này
+  if (lending) await loadLoans();
+}
+
+async function loadLoans() {
+  const evs = await queryLogs(lending, lending.filters.LoanRequested(), deployBlockOf('P2PLending'));
+  evs.sort(newestFirst);
+  // ... vẽ bảng bằng textContent (không dùng innerHTML với dữ liệu từ blockchain), txChip(e.transactionHash) ...
+}
+
+async function fundLoan(id, principal, button) {
+  const receipt = await runTx({
+    label: `fundLoan(${id})`,
+    button,
+    successMessage: `Đã cho vay khoản #${id}`,
+    build: async (s) => {
+      const c = lending.connect(s);
+      return c.fundLoan(id, await txOptions(c.fundLoan, [id], { value: principal }));
+    },
+  });
+  if (receipt) await loadLoans();
+}
+
+registerModule({
+  name: 'Cho vay',
+  init: initLending,                                         // mở trang (không cần ví)
+  onWalletChanged: () => { if (lending) loadLoans(); },     // kết nối ví / đổi tài khoản
+  onReadProviderChanged: () => { if (lending) lending = lending.connect(readProvider); },
+  poll: async (from, latest) => {                            // có block mới; lỗi thì lõi tự đọc lại lần sau
+    if (!lending) return;
+    const evs = await lending.queryFilter('*', from, latest);
+    for (const e of evs) logEvent(e, `Khoản vay #${e.args.id}`);
+    if (evs.length) loadLoans();
+  },
+  describeTx: (tx, name) => (name === 'P2PLending' ? { kind: 'Cho vay P2P (P2PLending)' } : null), // thẻ Tra cứu
+});
+
+addErrorHints([['collateral too low', 'tài sản thế chấp phải tối thiểu 150% số tiền vay.']]); // lý do revert → gợi ý
+```
+
+Hàm có sẵn trong lõi: `contractAddress`, `deployBlockOf`, `loadReadContract`, `queryLogs`, `runTx`, `txOptions`,
+`ensureWallet`, `addLog`, `logEvent`, `showTab`, `formatEth`, `formatDuration`, `formatTime`, `byteLength`, `shortAddr`,
+`addrLabel`, `isMe`, `txChip`, `hashSpan`, `detailField`, `newestFirst`, `getBlockTime`, `errorReason`, `addErrorHints`.
+Thiết kế chi tiết của chức năng cho vay: [docs/P2P-THIET-KE.md](../docs/P2P-THIET-KE.md).
+
 ## Giao diện (`../dapp`) – những điều cần biết
 
-- **Đọc dữ liệu không cần ví**: qua RPC công khai khai báo trong `NETWORKS.sepolia.readRpcs`, thử lần lượt và tự chuyển
+- **Đọc dữ liệu không cần ví**: qua RPC công khai khai báo trong `NETWORKS.sepolia.readRpcs` (`../dapp/js/core.js`), thử lần lượt và tự chuyển
   nguồn khi nguồn đang dùng lỗi 3 lần liên tiếp (~45 giây):
 
 | Nguồn | Đọc lịch sử tối đa | Gộp lệnh (batch) |

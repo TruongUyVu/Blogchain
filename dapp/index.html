@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <!-- ?v=...: đổi số này mỗi lần sửa CSS/JS để trình duyệt tải bản mới thay vì bản lưu tạm (GitHub Pages lưu 10 phút) -->
-  <link rel="stylesheet" href="style.css?v=12" />
+  <link rel="stylesheet" href="style.css?v=13" />
   <!-- Ethers.js v6 CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
 </head>
@@ -390,6 +390,12 @@
     </div>
   </div>
 
-  <script src="app.js?v=14"></script>
+  <!-- Lõi → các module chức năng → app.js (khởi động). Thêm chức năng mới: thêm <script src="js/<tên>.js"> trước app.js -->
+  <script src="js/core.js?v=15"></script>
+  <script src="js/blog.js?v=15"></script>
+  <script src="js/transfer.js?v=15"></script>
+  <script src="js/docs.js?v=15"></script>
+  <script src="js/lookup.js?v=15"></script>
+  <script src="app.js?v=15"></script>
 </body>
 </html>

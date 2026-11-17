@@ -26,7 +26,10 @@ const args = process.argv.slice(2);
 const buildIdx = args.indexOf("--build");
 const BUILD_DIR = buildIdx >= 0 ? path.resolve(ROOT, args[buildIdx + 1]) : MAIN_BUILD;
 const names = args.filter((a, i) => !a.startsWith("--") && args[i - 1] !== "--build");
-const CONTRACTS = names.length ? names : ["BlogChain", "Payments", "DocumentRegistry", "BlogModeration"];
+// Không ghi tên contract thì xác minh mọi contract ở thư mục contracts/ (trừ Migrations)
+const CONTRACTS = names.length
+  ? names
+  : fs.readdirSync(path.join(ROOT, "contracts")).filter((f) => f.endsWith(".sol") && f !== "Migrations.sol").map((f) => f.replace(/\.sol$/, ""));
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 

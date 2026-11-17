@@ -54,7 +54,7 @@ không push thẳng lên `main`.
      độ đông của Sepolia); số dư nên có khoảng 0,02 ETH vì mạng yêu cầu số dư ≥ gas tối đa × trần phí.
    - Chạy `npm run deploy:sepolia`. Lệnh này deploy mới cả 5 contract (thư mục `build/` không có trên Git nên Truffle
      coi như chưa deploy gì) và ghi địa chỉ mới vào `dapp/contracts.json`.
-4. Tăng `?v=` của `CONTRACTS_JSON_URL` trong `dapp/app.js`, commit, push. Trang của bạn giờ chạy với dữ liệu riêng;
+4. Tăng `?v=` của `CONTRACTS_JSON_URL` trong `dapp/js/core.js`, commit, push. Trang của bạn giờ chạy với dữ liệu riêng;
    ví deploy là **chủ sở hữu** contract kiểm duyệt của bạn.
 5. Muốn thêm chức năng mới: viết contract + test + migration mới, chạy thử trên Ganache, rồi deploy riêng contract đó
    (hướng dẫn ở [blogchain-truffle/README.md](blogchain-truffle/README.md)).
@@ -65,9 +65,9 @@ không push thẳng lên `main`.
   **mới**, dữ liệu cũ nằm lại ở contract cũ. Trong bản chính, việc deploy lên Sepolia và cập nhật `dapp/contracts.json`
   do **chủ repo** làm; Pull Request chỉ gửi mã nguồn, test và migration.
 - Contract mới phải có **test** trong `blogchain-truffle/test/` (xem các file test sẵn có để làm theo).
-- Thử giao diện trên Ganache bằng cách đổi `const NET = NETWORKS.sepolia;` thành `NETWORKS.ganache` trong `dapp/app.js`,
+- Thử giao diện trên Ganache bằng cách đổi `const NET = NETWORKS.sepolia;` thành `NETWORKS.ganache` trong `dapp/js/core.js`,
   và **đổi lại trước khi commit**.
-- Sửa `dapp/app.js` hoặc `dapp/style.css` thì **tăng `?v=`** tương ứng trong `dapp/index.html`, nếu không trình duyệt
+- Sửa file `.js` trong `dapp/` hoặc `dapp/style.css` thì **tăng `?v=`** tương ứng trong `dapp/index.html`, nếu không trình duyệt
   của người dùng vẫn chạy bản cũ.
 - Giao diện viết bằng HTML/CSS/JS thuần, không framework; chèn nội dung người dùng bằng `textContent`, **không dùng
   `innerHTML`** với dữ liệu đọc từ blockchain.
@@ -75,7 +75,7 @@ không push thẳng lên `main`.
 ## Danh sách kiểm tra trước khi gửi
 
 - [ ] `npm test` (trong `blogchain-truffle`, đang mở Ganache) chạy qua toàn bộ test
-- [ ] Đã thử trên giao diện với Ganache; `dapp/app.js` đã đổi lại `NETWORKS.sepolia`
-- [ ] Đã tăng `?v=` nếu sửa `app.js` / `style.css`
+- [ ] Đã thử trên giao diện với Ganache; `dapp/js/core.js` đã đổi lại `NETWORKS.sepolia`
+- [ ] Đã tăng `?v=` nếu sửa file `.js` / `style.css`
 - [ ] `git status` không có `.env`, private key, thư mục `build/` hay `node_modules/`
 - [ ] Mô tả Pull Request nêu rõ: sửa gì, vì sao, đã thử thế nào

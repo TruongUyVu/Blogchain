@@ -41,6 +41,7 @@ dấu vân tay và tên tài liệu được ghi lên blockchain. Tự kiểm tr
 | **Dùng DApp** cùng lớp: cài ví, xin ETH thử nghiệm, đăng bài, quy tắc nội dung (có bản in cho sinh viên) | [HUONG-DAN-THAM-GIA.md](HUONG-DAN-THAM-GIA.md) |
 | **Quản lý lớp** (giảng viên): chia ETH cho sinh viên, ẩn bài không phù hợp, thêm trợ giảng làm quản trị viên | [HUONG-DAN-THAM-GIA.md – Dành cho giảng viên](HUONG-DAN-THAM-GIA.md#dành-cho-giảng-viên) |
 | **Cùng phát triển mã nguồn** (fork + Pull Request, cộng tác viên) hoặc **tự dựng bản riêng** làm đồ án | [CONTRIBUTING.md](CONTRIBUTING.md) |
+| Xem **kế hoạch phát triển**: chức năng cho vay ngang hàng (P2P), các giai đoạn, thiết kế contract và giao diện | [docs/P2P-THIET-KE.md](docs/P2P-THIET-KE.md) |
 
 **Kiểm duyệt nội dung:** contract `BlogModeration` cho phép chủ sở hữu (ví đã deploy) và các quản trị viên do chủ sở hữu
 chỉ định **ẩn** bài không phù hợp. Bài bị ẩn vẫn nằm vĩnh viễn trên blockchain, giao diện chỉ hiện "Bài viết đã bị quản
@@ -72,9 +73,10 @@ Smart contract trên Sepolia, **mã nguồn đã xác minh** (Sourcify, mức `e
 
 ```
 Blogchain/
-├── blogchain-truffle/      # Smart contract (Solidity 0.8.19), migrations, 32 test tự động, script deploy / export / verify
+├── blogchain-truffle/      # Smart contract (Solidity 0.8.19), migrations, 34 test tự động, script deploy / export / verify
 │                           # → hướng dẫn chi tiết cho người phát triển: blogchain-truffle/README.md
-├── dapp/                   # Giao diện web: index.html, style.css, app.js, contracts.json (ABI + địa chỉ, tạo tự động)
+├── dapp/                   # Giao diện web: index.html, style.css, js/ (lõi + từng chức năng), contracts.json (tạo tự động)
+├── docs/P2P-THIET-KE.md    # Thiết kế chức năng cho vay ngang hàng (chưa triển khai)
 ├── HUONG-DAN-THAM-GIA.md   # Hướng dẫn cho sinh viên và giảng viên dùng DApp
 ├── CONTRIBUTING.md         # Hướng dẫn cùng phát triển / tự dựng bản riêng
 └── chay-dapp.bat           # Chạy giao diện trên máy tại http://localhost:3000 (Windows) khi thử với Ganache

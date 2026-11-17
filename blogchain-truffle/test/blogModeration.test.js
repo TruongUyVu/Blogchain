@@ -1,21 +1,7 @@
 const BlogChain = artifacts.require("BlogChain");
 const BlogModeration = artifacts.require("BlogModeration");
 
-// Hàm hỗ trợ: giao dịch phải bị revert và thông báo lỗi chứa chuỗi mong đợi
-async function expectRevert(promise, expectedMessage) {
-  let reverted = false;
-  try {
-    await promise;
-  } catch (err) {
-    reverted = true;
-    assert.include(
-      err.message,
-      expectedMessage,
-      `Mong đợi lỗi chứa "${expectedMessage}" nhưng nhận được: ${err.message}`
-    );
-  }
-  assert.isTrue(reverted, "Giao dịch lẽ ra phải bị revert");
-}
+const { expectRevert } = require("./helpers");
 
 contract("BlogModeration", (accounts) => {
   // teacher = chủ sở hữu (người deploy), ta = trợ giảng, student = sinh viên
