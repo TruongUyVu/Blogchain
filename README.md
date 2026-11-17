@@ -1,53 +1,78 @@
 # BlogChain
 
-Blog cơ bản trên blockchain để học Solidity và smart contract. Chạy hoàn toàn cục bộ bằng Ganache, Truffle và MetaMask.
+DApp học tập Web3 của **Viện Công nghệ Tài chính – Trường Đại học Đại Nam**: viết blog, chuyển tiền và xác thực
+tài liệu trên blockchain. Chạy trên mạng thử nghiệm **Sepolia**, giao diện công khai trên GitHub Pages.
 
-## Cấu trúc
+👉 **Dùng thử:** https://truonguyvu.github.io/Blogchain/dapp/
 
-- `blogchain-truffle/`: hợp đồng `BlogChain.sol` (đăng, sửa, xóa mềm bài viết), migrations và 9 test tự động.
-- `dapp/`: giao diện web (HTML, CSS, JavaScript, ethers.js v6) để tương tác với hợp đồng qua MetaMask.
-- `chay-dapp.bat`: bật máy chủ web cho thư mục `dapp` (Windows, cổng 3000).
+> ⚠️ Đây là mạng **thử nghiệm**: ETH ở đây **không có giá trị thật**. Mọi bài viết, giao dịch và tên tài liệu đều
+> **công khai** và **không thể xóa vĩnh viễn**, đừng đăng số điện thoại, CCCD, địa chỉ nhà hay thông tin cá nhân.
 
-## Yêu cầu
+## Chức năng
 
-Node.js 20, Truffle 5.x (`npm i -g truffle`), Ganache 2.7.1, tiện ích MetaMask.
-
-## Cách chạy
-
-1. Mở Ganache (RPC `http://127.0.0.1:7545`).
-2. Trong `blogchain-truffle`: `truffle compile`, `truffle migrate --reset`, `truffle test`.
-3. Chạy `chay-dapp.bat` rồi mở `http://localhost:3000`.
-4. Trong MetaMask, chọn mạng Ganache (Chain ID 1337) và nhập một tài khoản Ganache.
-5. Trên dapp: Kết nối MetaMask, dán địa chỉ `BlogChain` (lấy từ `truffle migrate`), bấm Tải & Kết nối Contract.
-
-Địa chỉ hợp đồng thay đổi sau mỗi lần triển khai lại, nên không được lưu cố định trong mã.
-
-## Thiết lập một lần (làm đúng thứ tự)
-
-1. **Mở Ganache** và kiểm tra RPC là `http://127.0.0.1:7545`.
-2. **Triển khai hợp đồng.** Mở PowerShell thường (không phải trong `truffle console`) tại `blogchain-truffle` và chạy `truffle migrate --reset`. Ghi lại dòng `contract address` của `BlogChain` (không lấy địa chỉ của `Migrations`).
-3. **Bật dapp.** Bấm đúp `chay-dapp.bat`, giữ nguyên cửa sổ đen, mở `http://localhost:3000` rồi nhấn Ctrl+F5.
-4. **Chuẩn bị MetaMask.**
-   - Bấm nút **Chuyển sang Ganache** trên dapp (Chain ID 1337, RPC `http://127.0.0.1:7545`) và đồng ý trong MetaMask.
-   - Trong Ganache, tab ACCOUNTS, bấm biểu tượng chìa khóa ở tài khoản số 0 để lấy khóa riêng. Trong MetaMask chọn **Import account** và dán khóa vào. Chỉ dùng khóa của ví thử Ganache, không dùng khóa ví thật.
-   - Bấm trạng thái kết nối của MetaMask và chọn **Connect** tài khoản này cho `localhost:3000`.
-   - Kiểm tra: số dư hiển thị khoảng 100 ETH.
-5. **Dùng dapp.** Bấm **Kết nối MetaMask**, dán địa chỉ `BlogChain` vào ô Contract Address, bấm **Tải & Kết nối Contract**, rồi thử đăng bài.
-
-## Khi Ganache bị đặt lại hoặc tạo workspace mới
-
-Hợp đồng cũ không còn. Chạy lại `truffle migrate --reset`, dán địa chỉ mới vào dapp. Trong MetaMask vào **Settings, Advanced, Clear activity tab data** để tránh lỗi nonce.
-
-## Lỗi thường gặp
-
-| Hiện tượng | Nguyên nhân thường gặp | Cách xử lý |
+| Thẻ | Làm được gì | Cần ví MetaMask? |
 |---|---|---|
-| `localhost refused to connect` | Cửa sổ `chay-dapp.bat` đã đóng hoặc đang chạy ở thư mục sai | Bấm đúp lại `chay-dapp.bat` và giữ cửa sổ mở |
-| Trang hiện `Chain ID: 1` hoặc số dư 0 | MetaMask sai mạng hoặc sai tài khoản | Bấm **Chuyển sang Ganache**, chọn đúng tài khoản Ganache đã nhập và cho phép kết nối |
-| `Không có contract nào ở địa chỉ này` | Dán nhầm địa chỉ hoặc Ganache đã bị đặt lại | Lấy địa chỉ `BlogChain` mới nhất sau `truffle migrate --reset` |
-| `could not coalesce error` | Thường là lệch nonce, thiếu ETH hoặc không phải tác giả | Đọc phần **Chi tiết** và **Gợi ý** trong nhật ký cuối trang dapp |
-| `... is not defined` khi gõ lệnh | Đang ở trong `truffle console`, gõ thừa chữ `truffle` hoặc sai chính tả | Trong console chỉ gõ `compile`, `migrate --reset`, `test`; gõ `.exit` để thoát |
+| **Blog** | Xem bài viết và lịch sử đăng / sửa / xóa; đăng bài; tác giả sửa hoặc xóa (xóa mềm) bài của mình | Xem: không · Đăng, sửa, xóa: có |
+| **Chuyển tiền** | Chuyển ETH thử nghiệm sang ví khác kèm ghi chú; bảng lịch sử chuyển tiền | Xem lịch sử: không · Chuyển: có |
+| **Xác thực** | Kéo thả một file để kiểm tra có đúng bản gốc đã đăng ký không; đăng ký hoặc thu hồi tài liệu | Kiểm tra: không · Đăng ký, thu hồi: có |
+| **Tra cứu** | Dán mã giao dịch (TX hash) để xem người gửi, người nhận, số tiền, phí gas, trạng thái | Không |
+| **Nhật ký** | Ghi lại từng bước: kết nối ví, gửi giao dịch, sự kiện mới trên blockchain, lỗi | Không |
+
+Khi xác thực tài liệu, **file không được tải lên đâu cả**: trình duyệt tự tính "dấu vân tay" SHA-256 của file, chỉ
+dấu vân tay và tên tài liệu được ghi lên blockchain. Tự kiểm tra trên Windows bằng PowerShell: `Get-FileHash "đường dẫn file"`.
+
+## Hướng dẫn cho người dùng
+
+1. **Cài MetaMask** (tiện ích cho trình duyệt máy tính, metamask.io) và tạo ví.
+   Chỉ dùng ví này cho thử nghiệm, không nạp tiền thật.
+2. **Xin Sepolia ETH miễn phí** để trả phí giao dịch (chỉ xem thì không cần):
+   - **Sepolia PoW Faucet** (sepolia-faucet.pk910.de): "đào" bằng trình duyệt vài chục phút, không cần tài khoản.
+   - **Google Cloud Web3 Faucet**: đăng nhập Google; lượng phát mỗi ngày thay đổi.
+   - QuickNode, Alchemy… thường yêu cầu ví có sẵn một ít ETH thật trên mạng chính.
+3. **Mở DApp**, bấm **Kết nối ví MetaMask**. Nếu MetaMask đang ở mạng khác, trang hiện nút
+   **Chuyển sang Sepolia Testnet**, bấm để đổi mạng.
+4. Chọn thẻ chức năng và làm theo hướng dẫn trên trang. Mỗi giao dịch cần xác nhận trong MetaMask và mất khoảng
+   15–30 giây; phí khoảng 0,00001 ETH (chuyển tiền, đăng ký tài liệu) đến 0,00006 ETH (đăng bài).
+
+## Kiến trúc
+
+```
+Trình duyệt người dùng
+ ├─ Đọc dữ liệu (không cần ví) ──► RPC công khai Sepolia (publicnode → Tenderly → 0xrpc.io, tự chuyển khi lỗi)
+ └─ Ghi dữ liệu (ký bằng ví)   ──► MetaMask ──► mạng Sepolia
+                                                 ├─ BlogChain         (bài viết)
+                                                 ├─ Payments          (chuyển tiền)
+                                                 └─ DocumentRegistry  (xác thực tài liệu)
+Giao diện: HTML/CSS/JS thuần + ethers.js v6, phục vụ bởi GitHub Pages; địa chỉ và ABI contract đọc từ dapp/contracts.json
+```
+
+Smart contract trên Sepolia, **mã nguồn đã xác minh** (Sourcify, mức `exact_match`):
+
+| Contract | Địa chỉ | Mã nguồn |
+|---|---|---|
+| BlogChain | `0x1b59c8aAAa7a258eafe7c708Fc27b6d4e2a7e7F0` | [Sourcify](https://repo.sourcify.dev/11155111/0x1b59c8aAAa7a258eafe7c708Fc27b6d4e2a7e7F0) |
+| Payments | `0xaDBF8d7370383A83Eef6d3844b30f285Fc9f7e1c` | [Sourcify](https://repo.sourcify.dev/11155111/0xaDBF8d7370383A83Eef6d3844b30f285Fc9f7e1c) |
+| DocumentRegistry | `0xb6a99853dC40129d69D3A0e27438Fd4305A9654A` | [Sourcify](https://repo.sourcify.dev/11155111/0xb6a99853dC40129d69D3A0e27438Fd4305A9654A) |
+
+## Cấu trúc thư mục
+
+```
+Blogchain/
+├── blogchain-truffle/   # Smart contract (Solidity 0.8.19), migrations, 23 test tự động, script deploy / export / verify
+│                        # → hướng dẫn chi tiết cho người phát triển: blogchain-truffle/README.md
+├── dapp/                # Giao diện web: index.html, style.css, app.js, contracts.json (ABI + địa chỉ, tạo tự động)
+└── chay-dapp.bat        # Chạy giao diện trên máy tại http://localhost:3000 (Windows) khi thử với Ganache
+```
+
+## Dành cho người phát triển
+
+Yêu cầu: Node.js 20, Truffle 5.x (`npm i -g truffle`), Ganache (để thử trên máy), MetaMask.
+Các bước cài đặt, chạy với Ganache, deploy lên Sepolia, xác minh mã nguồn và xử lý lỗi:
+xem **[blogchain-truffle/README.md](blogchain-truffle/README.md)**.
 
 ## Lưu ý an toàn
 
-Không đưa khóa riêng, cụm từ khôi phục (mnemonic) hay file `.env` lên repo. Dự án chỉ dùng cho mạng thử cục bộ.
+- Không bao giờ đưa file `.env`, private key hay cụm từ khôi phục (seed phrase) lên GitHub hoặc gửi cho người khác.
+  `.gitignore` đã chặn `.env`, nhưng hãy kiểm tra trước mỗi lần commit.
+- Ví dùng để deploy chỉ chứa ETH thử nghiệm; không dùng ví đó cho tiền thật.
+- Smart contract trên blockchain không sửa được: deploy contract mới thì dữ liệu cũ vẫn nằm ở contract cũ.
