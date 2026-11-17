@@ -98,6 +98,34 @@ Nếu deploy báo "ran out of gas" dù contract đơn giản, thường là do s
 6. Commit, push, rồi bật GitHub Pages (Settings → Pages → nhánh `main`). Link DApp:
    `https://truonguyvu.github.io/Blogchain/dapp/`
 
+## Xác minh mã nguồn contract (verify)
+
+Xác minh để ai cũng đọc được mã Solidity của contract và kiểm chứng nó khớp với mã đang chạy trên chuỗi.
+Script `scripts/verify-contracts.js` so mã biên dịch với mã trên chuỗi trước, khớp 100% mới gửi đi.
+
+```
+npm run verify          # contract deploy khi optimizer BẬT (từ nay về sau)
+npm run verify:legacy   # 3 contract đầu (BlogChain, Payments, DocumentRegistry) deploy khi optimizer TẮT
+```
+
+- **Sourcify**: không cần khóa. Cả 3 contract đã xác minh mức `exact_match`, xem tại
+  `https://repo.sourcify.dev/11155111/<địa chỉ contract>` (chân trang DApp có link sẵn).
+- **Etherscan**: cần khóa API miễn phí (etherscan.io → API Keys). Thêm dòng `ETHERSCAN_API_KEY=...` vào `.env`
+  rồi chạy lại lệnh trên. Etherscan không tự lấy kết quả từ Sourcify nên phải xác minh riêng.
+
+## Nguồn dữ liệu (RPC) dự phòng
+
+Giao diện đọc dữ liệu qua RPC công khai, khai báo trong `NETWORKS.sepolia.readRpcs` (`dapp/app.js`), thử lần lượt:
+
+| Nguồn | Đọc lịch sử tối đa | Gộp lệnh (batch) |
+|---|---|---|
+| ethereum-sepolia-rpc.publicnode.com | 45.000 block | có |
+| sepolia.gateway.tenderly.co | 45.000 block | không (treo khi gộp eth_getLogs + eth_call) |
+| 0xrpc.io/sep | 9.000 block | không |
+
+Nguồn đang dùng lỗi 3 lần liên tiếp (~45 giây) thì trang tự chuyển nguồn. Thêm nguồn mới: kiểm tra trên trình duyệt
+(CORS), giới hạn `eth_getLogs` và khả năng gộp lệnh trước khi đưa vào danh sách.
+
 ## Lỗi thường gặp
 
 | Lỗi | Cách xử lý |

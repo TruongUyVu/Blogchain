@@ -7,7 +7,9 @@
     "test": "truffle test",
     "deploy:ganache": "truffle migrate --reset && node scripts/export-contracts.js",
     "deploy:sepolia": "truffle migrate --network sepolia && node scripts/export-contracts.js",
-    "export": "node scripts/export-contracts.js"
+    "export": "node scripts/export-contracts.js",
+    "verify": "node scripts/verify-contracts.js",
+    "verify:legacy": "set SOLC_OPTIMIZER=off&& truffle compile --all --contracts_build_directory build/verify-legacy && node scripts/verify-contracts.js --build build/verify-legacy"
   },
   "dependencies": {
     "@truffle/hdwallet-provider": "^2.1.15",

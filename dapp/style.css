@@ -888,6 +888,29 @@ textarea.input-field { resize: vertical; line-height: 1.6; }
 
 .footer strong { color: #fff; }
 
+.footer-links {
+  border-top: 1px solid rgba(199, 220, 255, 0.15);
+  padding-top: 14px;
+}
+
+.footer a { color: #ffb37a; font-weight: 600; }
+.footer a:hover { color: #fff; }
+
+/* ---------- Lưu ý cho người dùng ---------- */
+.notice {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  background: var(--warning-soft);
+  border: 1px solid #fcd34d;
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  color: #78350f;
+  font-size: 0.95rem;
+}
+
+.notice .icon { color: var(--warning); margin-top: 2px; }
+
 /* ---------- Màn hình nhỏ ---------- */
 @media (max-width: 900px) {
   .grid-2 { grid-template-columns: 1fr; }

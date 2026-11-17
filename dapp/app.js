@@ -100,12 +100,22 @@ const NETWORKS = {
     docsAddress: '',
     docsDeployBlock: 0,
     priorityFeeGwei: '0.05', // tip trả cho validator, xem feeOverrides()
-    readRpc: 'https://ethereum-sepolia-rpc.publicnode.com', // RPC công khai để ai cũng đọc được, không cần ví
+    // Các nguồn RPC công khai để ai cũng đọc được dữ liệu, không cần ví. Thử lần lượt từ trên xuống.
+    //  - logChunk: số block tối đa mỗi lần đọc lịch sử sự kiện (eth_getLogs) mà nguồn đó cho phép.
+    //  - batch: false = gửi từng lệnh riêng. Tenderly treo khi nhận gói gộp nhiều lệnh eth_getLogs + eth_call
+    //    (đã kiểm tra), nên chỉ gộp lệnh với nguồn đã thử là xử lý tốt.
+    readRpcs: [
+      { url: 'https://ethereum-sepolia-rpc.publicnode.com', logChunk: 45000, batch: true },
+      { url: 'https://sepolia.gateway.tenderly.co', logChunk: 45000, batch: false },
+      { url: 'https://0xrpc.io/sep', logChunk: 9000, batch: false }
+    ],
     explorer: 'https://sepolia.etherscan.io',
+    // Trang xem mã nguồn contract đã xác minh (npm run verify / verify:legacy trong blogchain-truffle)
+    sourceViewer: 'https://repo.sourcify.dev/11155111/',
     params: {
       chainId: '0xaa36a7',
       chainName: 'Sepolia',
-      rpcUrls: ['https://ethereum-sepolia-rpc.publicnode.com'],
+      rpcUrls: ['https://ethereum-sepolia-rpc.publicnode.com', 'https://sepolia.gateway.tenderly.co'],
       nativeCurrency: { name: 'Sepolia Ether', symbol: 'ETH', decimals: 18 },
       blockExplorerUrls: ['https://sepolia.etherscan.io']
     }
@@ -121,7 +131,7 @@ const NETWORKS = {
     docsAddress: '',
     docsDeployBlock: 0,
     priorityFeeGwei: null, // Ganache: để MetaMask tự chọn phí
-    readRpc: 'http://127.0.0.1:7545',
+    readRpcs: [{ url: 'http://127.0.0.1:7545', logChunk: 45000, batch: true }],
     explorer: null,
     params: {
       chainId: '0x539',
@@ -153,10 +163,48 @@ async function loadContractsConfig() {
 
 // Provider chỉ để ĐỌC dữ liệu qua RPC công khai: ai mở trang cũng xem được bài viết và lịch sử, không cần MetaMask.
 // Ghi dữ liệu (đăng bài, chuyển tiền) vẫn phải ký bằng ví qua `signer`.
-let readProvider = new ethers.JsonRpcProvider(NET.readRpc, NET.chainId, { staticNetwork: true });
+let readProvider = null;
+let readRpcUrl = null; // nguồn RPC đang dùng
 
-// RPC công khai chỉ cho đọc sự kiện tối đa 50.000 block mỗi lần → chia khoảng block thành từng đoạn
-const LOG_CHUNK = 45000;
+// RPC công khai giới hạn số block mỗi lần đọc sự kiện → chia khoảng block thành từng đoạn (theo nguồn đang dùng)
+let LOG_CHUNK = 45000;
+const RPC_TIMEOUT_MS = 6000;
+
+function withTimeout(promise, ms) {
+  return Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error('quá thời gian chờ')), ms))]);
+}
+
+// Chọn nguồn RPC để đọc: thử lần lượt NET.readRpcs, dùng nguồn đầu tiên trả lời đúng mạng.
+// Nguồn chính chậm / ngừng hoạt động thì trang tự dùng nguồn dự phòng.
+async function connectReadProvider() {
+  for (const rpc of NET.readRpcs) {
+    const p = new ethers.JsonRpcProvider(rpc.url, NET.chainId, { staticNetwork: true, batchMaxCount: rpc.batch ? 100 : 1 });
+    try {
+      const chainId = Number(await withTimeout(p.send('eth_chainId', []), RPC_TIMEOUT_MS));
+      if (chainId !== NET.chainId) throw new Error(`sai mạng (Chain ID ${chainId})`);
+      await withTimeout(p.getBlockNumber(), RPC_TIMEOUT_MS);
+      if (readProvider) readProvider.destroy();
+      readProvider = p;
+      readRpcUrl = rpc.url;
+      LOG_CHUNK = rpc.logChunk;
+      addLog(`Đọc dữ liệu blockchain qua ${new URL(rpc.url).host}`, 'info');
+      return;
+    } catch (error) {
+      p.destroy();
+      addLog(`Nguồn dữ liệu ${new URL(rpc.url).host} không trả lời (${error.message || error}), thử nguồn dự phòng...`, 'info');
+    }
+  }
+  throw new Error('không kết nối được nguồn dữ liệu blockchain nào');
+}
+
+// Đổi nguồn RPC khi đang dùng mà nguồn cũ lỗi: gắn lại các contract vào nguồn mới
+async function reconnectReadProvider() {
+  await connectReadProvider();
+  if (contract) contract = contract.connect(readProvider);
+  if (payments) payments = payments.connect(readProvider);
+  if (docs) docs = docs.connect(readProvider);
+}
+
 async function queryLogs(c, filter, fromBlock) {
   const latest = await readProvider.getBlockNumber();
   const out = [];
@@ -877,17 +925,22 @@ async function initPayments() {
 // Theo dõi sự kiện mới trên chuỗi (thay cho contract.on): cứ POLL_MS lại hỏi RPC công khai
 // xem có block mới không, nếu có thì đọc sự kiện trong các block đó và cập nhật giao diện.
 const POLL_MS = 15000;
+const MAX_POLL_FAILURES = 3; // lỗi liên tiếp chừng này lần (~45 giây) thì đổi sang nguồn RPC dự phòng
 let watchedBlock = null;
+let pollFailures = 0;
+let polling = false;
 
 async function pollNewEvents() {
+  if (polling) return; // lần hỏi trước chưa xong (RPC chậm) thì bỏ qua lần này
+  polling = true;
   try {
-    const latest = await readProvider.getBlockNumber();
+    const latest = await withTimeout(readProvider.getBlockNumber(), RPC_TIMEOUT_MS);
     if (watchedBlock === null || latest <= watchedBlock) {
       watchedBlock = Math.max(watchedBlock ?? latest, latest);
+      pollFailures = 0;
       return;
     }
     const from = Math.max(watchedBlock + 1, latest - LOG_CHUNK); // tab ngủ lâu thì chỉ đọc đoạn gần nhất
-    watchedBlock = latest;
 
     if (contract) {
       const evs = await contract.queryFilter('*', from, latest);
@@ -917,8 +970,22 @@ async function pollNewEvents() {
         if (currentDoc) checkDocument();
       }
     }
+    watchedBlock = latest; // chỉ đánh dấu đã đọc khi mọi truy vấn thành công, lỗi thì lần sau đọc lại
+    pollFailures = 0;
   } catch (error) {
     console.warn('Không đọc được sự kiện mới', error);
+    pollFailures += 1;
+    if (pollFailures >= MAX_POLL_FAILURES) {
+      pollFailures = 0;
+      addLog(`Nguồn dữ liệu ${new URL(readRpcUrl).host} đang lỗi, chuyển sang nguồn dự phòng...`, 'info');
+      try {
+        await reconnectReadProvider();
+      } catch (e) {
+        addLog(`Không kết nối lại được nguồn dữ liệu blockchain: ${e.message || e}`, 'error');
+      }
+    }
+  } finally {
+    polling = false;
   }
 }
 
@@ -1504,15 +1571,38 @@ if (window.ethereum) {
   });
 }
 
+// Chân trang: link tới mã nguồn đã xác minh của từng contract (Sourcify; không có thì trình duyệt khối)
+function renderContractLinks() {
+  const box = document.getElementById('contractLinks');
+  box.textContent = '';
+  const list = [['BlogChain', NET.contractAddress], ['Payments', NET.paymentsAddress], ['DocumentRegistry', NET.docsAddress]].filter(([, addr]) => addr);
+  list.forEach(([name, addr], i) => {
+    if (i > 0) box.append(' · ');
+    if (NET.sourceViewer || NET.explorer) {
+      const a = document.createElement('a');
+      a.href = NET.sourceViewer ? NET.sourceViewer + addr : `${NET.explorer}/address/${addr}#code`;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.textContent = name;
+      a.title = addr;
+      box.appendChild(a);
+    } else {
+      box.append(`${name} (${shortAddr(addr)})`);
+    }
+  });
+  if (list.length === 0) box.textContent = 'chưa deploy';
+}
+
 // Mở trang là đọc dữ liệu ngay qua RPC công khai, chưa cần kết nối ví
 (async () => {
   try {
-    await loadContractsConfig();
+    await Promise.all([loadContractsConfig(), connectReadProvider()]);
   } catch (error) {
     console.error(error);
-    addLog(`Không nạp được cấu hình contract: ${error.message || error}. Hãy tải lại trang.`, 'error');
+    addLog(`Không khởi động được DApp: ${error.message || error}. Hãy tải lại trang.`, 'error');
     return;
   }
+  renderContractLinks();
   if (NET.contractAddress) contractAddressInput.value = NET.contractAddress;
   // Nạp 3 contract cùng lúc thay vì lần lượt (RPC công khai chậm, nạp lần lượt mất ~8 giây)
   await Promise.all([NET.contractAddress ? loadContract() : null, initPayments(), initDocs()]);

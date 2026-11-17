@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <!-- ?v=...: đổi số này mỗi lần sửa CSS/JS để trình duyệt tải bản mới thay vì bản lưu tạm (GitHub Pages lưu 10 phút) -->
-  <link rel="stylesheet" href="style.css?v=10" />
+  <link rel="stylesheet" href="style.css?v=11" />
   <!-- Ethers.js v6 CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
 </head>
@@ -49,6 +49,16 @@
   </section>
 
   <div class="page">
+    <!-- Lưu ý cho người dùng -->
+    <aside class="notice" role="note">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+      <div>
+        <strong>Lưu ý:</strong> Đây là mạng <strong>thử nghiệm Sepolia</strong>, ETH ở đây <strong>không có giá trị thật</strong>.
+        Mọi bài viết, giao dịch và tên tài liệu đều <strong>công khai</strong> và <strong>không thể xóa vĩnh viễn</strong>:
+        đừng đăng số điện thoại, CCCD, địa chỉ nhà hay thông tin cá nhân khác.
+      </div>
+    </aside>
+
     <!-- Thông tin ví -->
     <section class="wallet-strip" aria-label="Thông tin ví">
       <div class="wallet-item">
@@ -323,7 +333,11 @@
   <footer class="footer">
     <div class="footer-inner">
       <span><strong>Viện Công nghệ Tài chính</strong> · Trường Đại học Đại Nam</span>
-      <span>BlogChain · Dự án học tập Web3 trên mạng thử nghiệm Sepolia</span>
+      <span>BlogChain · Dự án học tập Web3 trên mạng thử nghiệm Sepolia · ETH thử nghiệm không có giá trị thật</span>
+    </div>
+    <div class="footer-inner footer-links">
+      <span>Mã nguồn smart contract (đã xác minh): <span id="contractLinks">đang tải...</span></span>
+      <span><a href="https://github.com/TruongUyVu/Blogchain" target="_blank" rel="noopener">Mã nguồn dự án trên GitHub ↗</a></span>
     </div>
   </footer>
 
@@ -341,6 +355,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=10"></script>
+  <script src="app.js?v=13"></script>
 </body>
 </html>

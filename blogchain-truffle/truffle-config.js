@@ -60,8 +60,9 @@ module.exports = {
         // Bật tối ưu hóa: mã contract gọn hơn → deploy rẻ hơn khoảng 40-55% (Sepolia tính ~1.600 gas
         // cho mỗi byte mã). runs = 200 cân bằng giữa phí deploy và phí mỗi lần gọi hàm.
         // LƯU Ý: 3 contract đã deploy trên Sepolia (BlogChain, Payments, DocumentRegistry) được biên dịch
-        // với optimizer TẮT; nếu xác minh mã nguồn chúng trên Etherscan thì phải chọn "optimizer: No".
-        optimizer: { enabled: true, runs: 200 },
+        // với optimizer TẮT. Để xác minh mã nguồn chúng phải biên dịch lại y như lúc deploy:
+        // npm run verify:legacy (đặt SOLC_OPTIMIZER=off để tắt optimizer cho lần biên dịch đó).
+        optimizer: { enabled: process.env.SOLC_OPTIMIZER !== "off", runs: 200 },
         evmVersion: "paris",
       },
     },
