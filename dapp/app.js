@@ -292,9 +292,15 @@ const txLookupInput = document.getElementById('txLookupInput');
 const txLookupBtn = document.getElementById('txLookupBtn');
 const txLookupResult = document.getElementById('txLookupResult');
 
-const SUBMIT_TEXT_CREATE = '✍️ Đăng bài lên Blockchain (Gửi giao dịch)';
-const TRANSFER_TEXT = '💸 Chuyển tiền (Gửi giao dịch)';
-const SUBMIT_TEXT_EDIT = '💾 Lưu chỉnh sửa (Gửi giao dịch)';
+const switchNetworkBtn = document.getElementById('switchNetworkBtn');
+const onboardCard = document.getElementById('onboardCard');
+const toastArea = document.getElementById('toastArea');
+
+const SUBMIT_TEXT_CREATE = 'Đăng bài';
+const TRANSFER_TEXT = 'Chuyển tiền';
+const SUBMIT_TEXT_EDIT = 'Lưu chỉnh sửa';
+const WAIT_SIGN_TEXT = 'Đang chờ ký trong MetaMask...';
+const WAIT_MINED_TEXT = 'Đang chờ xác nhận trên blockchain...';
 
 // Các mạng DApp hỗ trợ.
 //  - contractAddress: địa chỉ BlogChain trên mạng đó (in ra khi chạy truffle migrate), để trống thì người dùng tự dán.
@@ -377,14 +383,32 @@ async function feeOverrides() {
   return { maxPriorityFeePerGas: tip, maxFeePerGas: block.baseFeePerGas * 2n + tip };
 }
 
-// Helper: Logging
-function addLog(message, type = 'info') {
+// Helper: Logging. Lỗi và cảnh báo luôn hiện thông báo nổi; thông báo thành công chỉ hiện khi truyền toast = true
+function addLog(message, type = 'info', toast = false) {
   const timestamp = new Date().toLocaleTimeString();
   const entry = document.createElement('div');
   entry.className = `log-entry log-${type}`;
   entry.textContent = `[${timestamp}] ${message}`;
   logsContainer.appendChild(entry);
   logsContainer.scrollTop = logsContainer.scrollHeight;
+  if (toast || type === 'error' || type === 'warn') showToast(message, type);
+}
+
+// Thông báo nổi ở góc màn hình, tự ẩn sau vài giây
+function showToast(message, type = 'info') {
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  el.textContent = message;
+  toastArea.appendChild(el);
+  while (toastArea.children.length > 3) toastArea.firstChild.remove();
+  setTimeout(() => el.remove(), type === 'error' ? 9000 : 5000);
+}
+
+// Chuyển giữa các thẻ chức năng (Blog / Chuyển tiền / Tra cứu / Nhật ký), nhớ thẻ đang mở
+function showTab(name) {
+  for (const t of document.querySelectorAll('.tab')) t.setAttribute('aria-selected', String(t.dataset.tab === name));
+  for (const p of document.querySelectorAll('.tab-panel')) p.hidden = p.dataset.panel !== name;
+  try { localStorage.setItem('blogchain-tab', name); } catch {}
 }
 
 // Helper: Rút gọn địa chỉ ví
@@ -443,8 +467,8 @@ async function connectWallet() {
     await updateWalletInfo();
 
     connectBtnText.textContent = shortAddr(userAccount);
-    networkStatusDot.className = 'status-dot online';
-    addLog(`Đã kết nối thành công với ví: ${userAccount}`, 'success');
+    onboardCard.hidden = true;
+    addLog(`Đã kết nối thành công với ví: ${userAccount}`, 'success', true);
 
     // Có sẵn địa chỉ contract thì tự nạp luôn, người dùng không phải làm Bước 1
     if (!contract && ethers.isAddress(contractAddressInput.value.trim())) {
@@ -468,12 +492,14 @@ async function updateWalletInfo() {
     const ethBalance = parseFloat(ethers.formatEther(balance)).toFixed(4);
 
     const chainIdNow = Number(network.chainId);
-    if (chainIdNow !== NET.chainId) {
-      networkNameEl.textContent = `Chain ID: ${chainIdNow} - SAI MẠNG (cần ${NET.label} ${NET.chainId})`;
-      networkStatusDot.className = 'status-dot offline';
+    const rightNetwork = chainIdNow === NET.chainId;
+    networkStatusDot.className = `status-dot ${rightNetwork ? 'online' : 'offline'}`;
+    switchNetworkBtn.hidden = rightNetwork; // nút đổi mạng chỉ hiện khi MetaMask đang ở sai mạng
+    if (!rightNetwork) {
+      networkNameEl.textContent = `Sai mạng (Chain ID ${chainIdNow})`;
       addLog(`MetaMask đang ở Chain ID ${chainIdNow}, không phải ${NET.label} (${NET.chainId}). Bấm "Chuyển sang ${NET.label}" trước khi dùng.`, 'error');
     } else {
-      networkNameEl.textContent = `Chain ID: ${chainIdNow} (${NET.label})`;
+      networkNameEl.textContent = NET.label;
     }
     walletAddressEl.textContent = `${userAccount.slice(0, 8)}...${userAccount.slice(-6)}`;
     walletBalanceEl.textContent = `${ethBalance} ETH`;
@@ -546,7 +572,7 @@ async function loadContract() {
 // 4. Đọc danh sách bài viết (No Gas)
 async function loadPosts() {
   if (!contract) {
-    addLog('Chưa có Contract nào được kết nối. Hãy nhập Contract Address ở Bước 1.', 'warn');
+    addLog('Chưa nạp contract BlogChain. Hãy bấm "Kết nối ví MetaMask" trước.', 'warn');
     return;
   }
 
@@ -876,7 +902,8 @@ function startEdit(post) {
   writeModeLabel.textContent = `editPost(${post.id}, title, content)`;
   submitPostBtn.textContent = SUBMIT_TEXT_EDIT;
   cancelEditBtn.style.display = '';
-  postTitleInput.focus();
+  postTitleInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  postTitleInput.focus({ preventScroll: true });
 }
 
 // Quay lại chế độ đăng bài mới
@@ -894,11 +921,11 @@ async function sendTx(label, txPromise) {
   const tx = await txPromise;
   addLog(`Giao dịch ${label} đã được phát đi! TX Hash: ${tx.hash}`, 'info');
   if (NET.explorer) addLog(`Xem trên trình duyệt khối: ${NET.explorer}/tx/${tx.hash}`, 'info');
-  submitPostBtn.textContent = '⛏️ Đang xác thực Block (Mining)...';
+  submitPostBtn.textContent = WAIT_MINED_TEXT;
 
   // Chờ giao dịch được đóng gói vào Block (Sepolia mất khoảng 12-30 giây)
   const receipt = await tx.wait();
-  addLog(`✅ Giao dịch thành công trong Block #${receipt.blockNumber}! Gas sử dụng: ${receipt.gasUsed.toString()} · Phí: ${ethers.formatEther(receipt.fee)} ETH`, 'success');
+  addLog(`✅ Giao dịch thành công trong Block #${receipt.blockNumber}! Gas sử dụng: ${receipt.gasUsed.toString()} · Phí: ${ethers.formatEther(receipt.fee)} ETH`, 'success', true);
 
   // Cập nhật lại số dư ví và dữ liệu
   await updateWalletInfo();
@@ -917,7 +944,7 @@ function handleTxError(error) {
 // 5. Đăng bài mới / Lưu chỉnh sửa (Requires Gas & MetaMask Sign)
 async function submitPost() {
   if (!contract) {
-    addLog('Chưa kết nối Contract! Vui lòng nạp Contract ở Bước 1 trước.', 'warn');
+    addLog('Chưa nạp contract BlogChain. Hãy bấm "Kết nối ví MetaMask" trước.', 'warn');
     return;
   }
 
@@ -937,7 +964,7 @@ async function submitPost() {
 
   try {
     submitPostBtn.disabled = true;
-    submitPostBtn.textContent = '⏳ Đang chờ ký MetaMask...';
+    submitPostBtn.textContent = WAIT_SIGN_TEXT;
 
     if (editingPostId === null) {
       addLog(`Chuẩn bị gửi giao dịch createPost("${title}")...`, 'info');
@@ -983,7 +1010,7 @@ function txChip(hash) {
   el.title = `${hash} (bấm để xem chi tiết)`;
   el.addEventListener('click', () => {
     txLookupInput.value = hash;
-    txLookupInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    showTab('lookup');
     lookupTx();
   });
   return el;
@@ -1060,16 +1087,16 @@ async function sendTransfer() {
 
   try {
     sendTransferBtn.disabled = true;
-    sendTransferBtn.textContent = '⏳ Đang chờ ký MetaMask...';
+    sendTransferBtn.textContent = WAIT_SIGN_TEXT;
     addLog(`Chuẩn bị gửi giao dịch sendEth(${shortAddr(to)}) kèm ${ethers.formatEther(value)} ETH...`, 'info');
 
     const tx = await payments.connect(signer).sendEth(to, note, { value, ...(await feeOverrides()) });
     addLog(`Giao dịch chuyển tiền đã được phát đi! TX Hash: ${tx.hash}`, 'info');
     if (NET.explorer) addLog(`Xem trên trình duyệt khối: ${NET.explorer}/tx/${tx.hash}`, 'info');
-    sendTransferBtn.textContent = '⛏️ Đang xác thực Block (Mining)...';
+    sendTransferBtn.textContent = WAIT_MINED_TEXT;
 
     const receipt = await tx.wait();
-    addLog(`✅ Đã chuyển ${ethers.formatEther(value)} ETH tới ${shortAddr(to)} trong Block #${receipt.blockNumber}! Phí gas: ${ethers.formatEther(receipt.fee)} ETH`, 'success');
+    addLog(`✅ Đã chuyển ${ethers.formatEther(value)} ETH tới ${shortAddr(to)} trong Block #${receipt.blockNumber}! Phí gas: ${ethers.formatEther(receipt.fee)} ETH`, 'success', true);
 
     transferAmountInput.value = '';
     transferNoteInput.value = '';
@@ -1129,6 +1156,7 @@ async function loadTransfers() {
         if (i === 2) td.title = e.args.from;
         if (i === 3) td.title = e.args.to;
         if (i === 4) td.className = 'amount-cell';
+        if (i === 5) td.className = 'note-cell';
         tr.appendChild(td);
       });
       const tdHash = document.createElement('td');
@@ -1236,14 +1264,20 @@ async function lookupTx() {
 }
 
 // Hiển thị tên mạng và điền sẵn địa chỉ contract theo NET
-document.getElementById('switchNetworkBtn').textContent = `🔀 Chuyển sang ${NET.label}`;
-document.getElementById('networkSubtitle').textContent = `Tương tác Smart Contract trên mạng ${NET.label}`;
+switchNetworkBtn.querySelector('span').textContent = `Chuyển sang ${NET.label}`;
+document.getElementById('networkSubtitle').textContent = `Blog và chuyển tiền trên mạng ${NET.label}`;
 if (NET.contractAddress) contractAddressInput.value = NET.contractAddress;
-addLog(`Sẵn sàng. DApp dùng mạng ${NET.label} (Chain ID ${NET.chainId}). Bấm "Kết nối MetaMask" để bắt đầu.`, 'info');
+addLog(`Sẵn sàng. DApp dùng mạng ${NET.label} (Chain ID ${NET.chainId}). Bấm "Kết nối ví MetaMask" để bắt đầu.`, 'info');
+
+// Mở lại thẻ chức năng lần trước (nếu có)
+let savedTab = null;
+try { savedTab = localStorage.getItem('blogchain-tab'); } catch {}
+if (savedTab && document.querySelector(`.tab[data-tab="${savedTab}"]`)) showTab(savedTab);
 
 // Event Listeners
+for (const t of document.querySelectorAll('.tab')) t.addEventListener('click', () => showTab(t.dataset.tab));
 connectWalletBtn.addEventListener('click', connectWallet);
-document.getElementById('switchNetworkBtn').addEventListener('click', switchNetwork);
+switchNetworkBtn.addEventListener('click', switchNetwork);
 loadContractBtn.addEventListener('click', loadContract);
 refreshPostsBtn.addEventListener('click', loadPosts);
 showDeletedChk.addEventListener('change', loadPosts);

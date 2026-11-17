@@ -6,228 +6,250 @@
   <title>BlogChain DApp</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
   <!-- Ethers.js v6 CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
 </head>
 <body>
-  <div class="background-glow"></div>
-
-  <div class="app-container">
-    <!-- Header -->
-    <header class="header">
-      <div class="logo-group">
-        <div class="logo-icon">⚡</div>
+  <!-- Thanh trên cùng: tên ứng dụng + ví -->
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="brand-logo" aria-hidden="true">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        </div>
         <div>
-          <h1 class="logo-title">Web3 DApp Portal</h1>
-          <p id="networkSubtitle" class="logo-subtitle">Tương tác Smart Contract trên Blockchain</p>
+          <h1 class="brand-title">BlogChain</h1>
+          <p id="networkSubtitle" class="brand-subtitle">Blog và chuyển tiền trên Blockchain</p>
         </div>
       </div>
 
-      <div class="wallet-header-card">
-        <button id="switchNetworkBtn" class="btn btn-secondary" style="margin-right:8px;">🔀 Chuyển mạng</button>
+      <div class="topbar-actions">
+        <button id="switchNetworkBtn" class="btn btn-warning">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>
+          <span>Chuyển mạng</span>
+        </button>
         <button id="connectWalletBtn" class="btn btn-primary">
-          <span class="btn-icon">🦊</span>
-          <span id="connectBtnText">Kết nối MetaMask</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg>
+          <span id="connectBtnText">Kết nối ví MetaMask</span>
         </button>
       </div>
-    </header>
+    </div>
+  </header>
 
-    <!-- Network & Wallet Info Bar -->
-    <section class="info-bar">
-      <div class="info-card">
-        <span class="info-label">Trạng thái mạng</span>
-        <div class="info-value-group">
-          <span id="networkStatusDot" class="status-dot offline"></span>
-          <span id="networkName" class="info-value">Chưa kết nối</span>
-        </div>
+  <div class="page">
+    <!-- Thông tin ví -->
+    <section class="wallet-strip" aria-label="Thông tin ví">
+      <div class="wallet-item">
+        <span class="wallet-label">Mạng</span>
+        <span class="wallet-value"><span id="networkStatusDot" class="status-dot offline"></span><span id="networkName">Chưa kết nối</span></span>
       </div>
-      <div class="info-card">
-        <span class="info-label">Địa chỉ ví</span>
-        <span id="walletAddress" class="info-value mono">0x000...000</span>
+      <div class="wallet-item">
+        <span class="wallet-label">Địa chỉ ví</span>
+        <span id="walletAddress" class="wallet-value mono">—</span>
       </div>
-      <div class="info-card">
-        <span class="info-label">Số dư ETH</span>
-        <span id="walletBalance" class="info-value highlight">0.0000 ETH</span>
+      <div class="wallet-item">
+        <span class="wallet-label">Số dư</span>
+        <span id="walletBalance" class="wallet-value wallet-balance">0.0000 ETH</span>
       </div>
     </section>
 
-    <!-- Main Grid -->
-    <main class="main-grid">
-      <!-- Cột 1: Cấu hình Smart Contract -->
-      <div class="panel">
-        <div class="panel-header">
-          <div class="panel-tag">Bước 1</div>
-          <h2 class="panel-title">Thiết lập Smart Contract</h2>
-        </div>
-        <p class="panel-desc">
-          Địa chỉ <strong>Contract</strong> BlogChain đã được điền sẵn và tự nạp khi bạn kết nối MetaMask.
-          Muốn dùng contract khác thì dán địa chỉ (nhận được sau khi chạy <code>truffle migrate</code>) vào đây.
-        </p>
+    <!-- Hướng dẫn bắt đầu (ẩn sau khi kết nối ví) -->
+    <section id="onboardCard" class="onboard">
+      <h2 class="onboard-title">Bắt đầu trong 3 bước</h2>
+      <ol class="onboard-steps">
+        <li><span class="step-num">1</span><div><strong>Cài MetaMask</strong><p>Tiện ích ví cho trình duyệt máy tính (metamask.io).</p></div></li>
+        <li><span class="step-num">2</span><div><strong>Kết nối ví</strong><p>Bấm nút <em>Kết nối ví MetaMask</em> ở góc trên bên phải.</p></div></li>
+        <li><span class="step-num">3</span><div><strong>Chọn chức năng</strong><p>Viết blog, chuyển tiền hoặc tra cứu giao dịch ở các thẻ bên dưới.</p></div></li>
+      </ol>
+    </section>
 
-        <div class="form-group">
-          <label for="contractAddressInput">Địa chỉ Contract (0x...):</label>
-          <input 
-            type="text" 
-            id="contractAddressInput" 
-            placeholder="Ví dụ: 0xE8B327Bf5422511be3E9c66945e038265D8D6B11" 
-            class="input-field mono"
-          />
-        </div>
+    <!-- Thẻ chức năng -->
+    <nav class="tabs" role="tablist" aria-label="Chức năng">
+      <button class="tab tab-blog" role="tab" data-tab="blog" aria-selected="true">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        <span>Blog</span>
+      </button>
+      <button class="tab tab-transfer" role="tab" data-tab="transfer" aria-selected="false">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+        <span>Chuyển tiền</span>
+      </button>
+      <button class="tab tab-lookup" role="tab" data-tab="lookup" aria-selected="false">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <span>Tra cứu</span>
+      </button>
+      <button class="tab tab-logs" role="tab" data-tab="logs" aria-selected="false">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+        <span>Nhật ký</span>
+      </button>
+    </nav>
 
-        <button id="loadContractBtn" class="btn btn-secondary w-100">
-          🔍 Tải & Kết nối Contract
-        </button>
-
-        <div class="contract-status-box" id="contractStatusBox">
-          <span id="contractStatusText">Chưa nạp Contract</span>
-        </div>
-      </div>
-
-      <!-- Cột 2: Tương tác Đọc & Ghi dữ liệu -->
-      <div class="panel">
-        <div class="panel-header">
-          <div class="panel-tag">Bước 2</div>
-          <h2 class="panel-title">Tương tác Hợp đồng</h2>
-        </div>
-
-        <!-- Write Action -->
-        <div class="action-card write-card">
-          <div class="action-header">
-            <span class="badge badge-write">WRITE (Tốn Gas - Ký MetaMask)</span>
-            <span id="writeModeLabel" class="action-method">createPost(title, content)</span>
+    <!-- ===================== BLOG ===================== -->
+    <section class="tab-panel theme-blog" data-panel="blog" role="tabpanel">
+      <div class="grid-2">
+        <!-- Viết bài -->
+        <div class="card">
+          <div class="card-head">
+            <h2 class="card-title">Viết bài mới</h2>
+            <span class="chip chip-write">Ghi lên blockchain · tốn phí gas</span>
           </div>
           <div class="form-group">
-            <input 
-              type="text" 
-              id="postTitleInput" 
-              placeholder="Tiêu đề bài viết (tối đa 100 byte)" 
-              class="input-field"
-            />
+            <label for="postTitleInput">Tiêu đề</label>
+            <input type="text" id="postTitleInput" placeholder="Tối đa 100 byte" class="input-field" />
           </div>
           <div class="form-group">
-            <textarea 
-              id="postContentInput" 
-              rows="4" 
-              placeholder="Nội dung bài viết (tối đa 2000 byte)" 
-              class="input-field"
-            ></textarea>
+            <label for="postContentInput">Nội dung</label>
+            <textarea id="postContentInput" rows="6" placeholder="Tối đa 2000 byte" class="input-field"></textarea>
           </div>
-          <button id="submitPostBtn" class="btn btn-accent w-100">
-            ✍️ Đăng bài lên Blockchain (Gửi giao dịch)
-          </button>
-          <button id="cancelEditBtn" class="btn-text" style="display: none;">Hủy chỉnh sửa</button>
+          <button id="submitPostBtn" class="btn btn-primary btn-lg w-100">Đăng bài</button>
+          <button id="cancelEditBtn" class="btn btn-ghost w-100" style="display: none;">Hủy chỉnh sửa</button>
+          <p class="hint">Hàm gọi: <code id="writeModeLabel">createPost(title, content)</code></p>
         </div>
 
-        <!-- Read Action -->
-        <div class="action-card read-card">
-          <div class="action-header">
-            <span class="badge badge-read">READ (Không tốn Gas)</span>
-            <span class="action-method">getPostCount() / getPost(id)</span>
+        <!-- Danh sách bài -->
+        <div class="card">
+          <div class="card-head">
+            <h2 class="card-title">Bài viết</h2>
+            <button id="refreshPostsBtn" class="btn btn-ghost btn-sm" aria-label="Tải lại danh sách bài viết">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+              <span>Tải lại</span>
+            </button>
           </div>
-          <div class="display-box">
-            <span class="display-label">Bài viết trên Blockchain:</span>
-            <div id="postCountDisplay" class="display-content">---</div>
-          </div>
-          <label class="check-row"><input type="checkbox" id="showDeletedChk" /> Hiện cả bài đã xóa mềm</label>
+          <div id="postCountDisplay" class="muted">Kết nối ví để xem bài viết.</div>
+          <label class="check-row"><input type="checkbox" id="showDeletedChk" /> Hiện cả bài đã xóa</label>
           <div id="postsList" class="posts-list"></div>
-          <button id="refreshPostsBtn" class="btn btn-outline w-100">
-            🔄 Tải lại danh sách bài viết
+        </div>
+      </div>
+
+      <!-- Lịch sử giao dịch của blog -->
+      <div class="card">
+        <div class="card-head">
+          <h2 class="card-title">Lịch sử giao dịch của blog</h2>
+          <button id="refreshHistoryBtn" class="btn btn-ghost btn-sm">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+            <span>Tải lại</span>
           </button>
         </div>
+        <p class="card-desc">Mọi lần đăng, sửa, xóa bài đều được ghi trên blockchain. Bấm vào mã giao dịch để sao chép.</p>
+        <div id="historyList" class="table-wrap"><div class="empty">Chưa nạp contract.</div></div>
       </div>
-    </main>
 
-    <!-- Lịch sử giao dịch của blog -->
-    <section class="panel history-panel">
-      <div class="panel-header">
-        <h2 class="panel-title">🧾 Lịch sử giao dịch của blog</h2>
-        <button id="refreshHistoryBtn" class="btn-text">Tải lại</button>
-      </div>
-      <p class="panel-desc">Lấy từ các sự kiện <code>PostCreated</code>, <code>PostEdited</code>, <code>PostDeleted</code> trên chuỗi. Bấm vào mã giao dịch để sao chép.</p>
-      <div id="historyList" class="history-wrap"><div class="display-content">Chưa nạp Contract.</div></div>
+      <!-- Cài đặt nâng cao: địa chỉ contract -->
+      <details class="card advanced">
+        <summary>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>
+          Cài đặt nâng cao: địa chỉ contract BlogChain
+        </summary>
+        <p class="card-desc">Địa chỉ contract đã được điền sẵn và tự nạp khi kết nối ví. Chỉ đổi khi muốn dùng contract khác (địa chỉ in ra sau khi chạy <code>truffle migrate</code>).</p>
+        <div class="form-group">
+          <label for="contractAddressInput">Địa chỉ contract (0x...)</label>
+          <input type="text" id="contractAddressInput" placeholder="0x..." class="input-field mono" />
+        </div>
+        <button id="loadContractBtn" class="btn btn-secondary">Nạp contract</button>
+        <div class="contract-status-box" id="contractStatusBox">
+          <span id="contractStatusText">Chưa nạp contract</span>
+        </div>
+      </details>
     </section>
 
-    <!-- Chuyển tiền (contract Payments) -->
-    <main class="main-grid">
-      <div class="panel">
-        <div class="panel-header">
-          <div class="panel-tag">Bước 3</div>
-          <h2 class="panel-title">💸 Chuyển tiền (ETH)</h2>
-        </div>
-        <p class="panel-desc">
-          Chuyển ETH từ ví đang kết nối sang ví khác qua contract <code>Payments</code>.
-          Tiền tới thẳng ví người nhận; giao dịch được ghi lại để ai cũng xem được trong bảng lịch sử bên dưới.
-        </p>
-
-        <div class="action-card write-card">
-          <div class="action-header">
-            <span class="badge badge-write">WRITE (Tốn Gas - Ký MetaMask)</span>
-            <span class="action-method">sendEth(to, note)</span>
+    <!-- ===================== CHUYỂN TIỀN ===================== -->
+    <section class="tab-panel theme-transfer" data-panel="transfer" role="tabpanel" hidden>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head">
+            <h2 class="card-title">Chuyển tiền (ETH)</h2>
+            <span class="chip chip-write">Ghi lên blockchain · tốn phí gas</span>
           </div>
+          <p class="card-desc">Tiền tới thẳng ví người nhận. Giao dịch được ghi lại để ai cũng xem được trong lịch sử.</p>
           <div class="form-group">
-            <label for="transferToInput">Ví người nhận (0x...):</label>
+            <label for="transferToInput">Ví người nhận</label>
             <input type="text" id="transferToInput" placeholder="0x..." class="input-field mono" />
           </div>
           <div class="form-group">
-            <label for="transferAmountInput">Số tiền (ETH):</label>
-            <input type="text" id="transferAmountInput" placeholder="Ví dụ: 0.001" inputmode="decimal" class="input-field mono" />
+            <label for="transferAmountInput">Số tiền (ETH)</label>
+            <input type="text" id="transferAmountInput" placeholder="Ví dụ: 0.001" inputmode="decimal" class="input-field input-amount mono" />
           </div>
           <div class="form-group">
-            <label for="transferNoteInput">Ghi chú (không bắt buộc, tối đa 200 byte):</label>
+            <label for="transferNoteInput">Ghi chú <span class="optional">(không bắt buộc)</span></label>
             <input type="text" id="transferNoteInput" placeholder="Ví dụ: Trả tiền tài liệu" class="input-field" />
           </div>
-          <button id="sendTransferBtn" class="btn btn-accent w-100">💸 Chuyển tiền (Gửi giao dịch)</button>
+          <button id="sendTransferBtn" class="btn btn-success btn-lg w-100">Chuyển tiền</button>
+          <p class="hint">Hàm gọi: <code>sendEth(to, note)</code> · Phí gas khoảng 0.000003 ETH</p>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2 class="card-title">Lưu ý an toàn</h2>
+          </div>
+          <ul class="tips">
+            <li><strong>Kiểm tra kỹ địa chỉ người nhận.</strong> Giao dịch trên blockchain không thể hoàn tác.</li>
+            <li><strong>Đây là ETH thử nghiệm (Sepolia)</strong>, không có giá trị thật.</li>
+            <li>Sau khi bấm <em>Chuyển tiền</em>, xác nhận trong cửa sổ MetaMask. Giao dịch hoàn tất sau khoảng 15–30 giây.</li>
+            <li>Bấm vào mã giao dịch trong bảng bên dưới để xem chi tiết.</li>
+          </ul>
         </div>
       </div>
 
-      <div class="panel">
-        <div class="panel-header">
-          <div class="panel-tag">Tra cứu</div>
-          <h2 class="panel-title">🔎 Xem một giao dịch bất kỳ</h2>
+      <div class="card">
+        <div class="card-head">
+          <h2 class="card-title">Lịch sử chuyển tiền</h2>
+          <button id="refreshTransfersBtn" class="btn btn-ghost btn-sm">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+            <span>Tải lại</span>
+          </button>
         </div>
-        <p class="panel-desc">
-          Dán mã giao dịch (TX hash) để xem người gửi, người nhận, số tiền, phí gas và trạng thái.
-          Dùng được cả với giao dịch chuyển thẳng bằng MetaMask (không qua DApp).
-        </p>
+        <label class="check-row"><input type="checkbox" id="myTransfersChk" /> Chỉ hiện giao dịch của ví tôi</label>
+        <div id="transfersList" class="table-wrap"><div class="empty">Kết nối ví để xem lịch sử chuyển tiền.</div></div>
+      </div>
+    </section>
+
+    <!-- ===================== TRA CỨU ===================== -->
+    <section class="tab-panel theme-lookup" data-panel="lookup" role="tabpanel" hidden>
+      <div class="card card-narrow">
+        <div class="card-head">
+          <h2 class="card-title">Tra cứu một giao dịch</h2>
+          <span class="chip chip-read">Chỉ đọc · miễn phí</span>
+        </div>
+        <p class="card-desc">Dán mã giao dịch (TX hash) để xem người gửi, người nhận, số tiền, phí gas và trạng thái. Dùng được cả với giao dịch chuyển thẳng bằng MetaMask.</p>
         <div class="form-group">
-          <label for="txLookupInput">Mã giao dịch (0x... 66 ký tự):</label>
-          <input type="text" id="txLookupInput" placeholder="0x..." class="input-field mono" />
+          <label for="txLookupInput">Mã giao dịch</label>
+          <div class="input-row">
+            <input type="text" id="txLookupInput" placeholder="0x... (66 ký tự)" class="input-field mono" />
+            <button id="txLookupBtn" class="btn btn-info">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+              <span>Tra cứu</span>
+            </button>
+          </div>
         </div>
-        <button id="txLookupBtn" class="btn btn-secondary w-100">🔎 Tra cứu giao dịch</button>
-        <div id="txLookupResult"></div>
-      </div>
-    </main>
-
-    <!-- Lịch sử chuyển tiền -->
-    <section class="panel history-panel">
-      <div class="panel-header">
-        <h2 class="panel-title">🧾 Lịch sử chuyển tiền</h2>
-        <button id="refreshTransfersBtn" class="btn-text">Tải lại</button>
-      </div>
-      <p class="panel-desc">Lấy từ sự kiện <code>Transferred</code> của contract <code>Payments</code>. Bấm vào mã giao dịch để xem chi tiết.</p>
-      <label class="check-row"><input type="checkbox" id="myTransfersChk" /> Chỉ hiện giao dịch của ví tôi (gửi hoặc nhận)</label>
-      <div id="transfersList" class="history-wrap"><div class="display-content">Kết nối MetaMask để xem lịch sử chuyển tiền.</div></div>
-    </section>
-
-    <!-- Activity & Logs Panel -->
-    <section class="panel logs-panel">
-      <div class="panel-header">
-        <h2 class="panel-title">📜 Nhật ký Giao dịch & Sự kiện (Transaction Logs)</h2>
-        <button id="clearLogsBtn" class="btn-text">Xóa nhật ký</button>
-      </div>
-      <div id="logsContainer" class="logs-container mono">
+        <div id="txLookupResult" class="lookup-result"></div>
       </div>
     </section>
+
+    <!-- ===================== NHẬT KÝ ===================== -->
+    <section class="tab-panel theme-logs" data-panel="logs" role="tabpanel" hidden>
+      <div class="card">
+        <div class="card-head">
+          <h2 class="card-title">Nhật ký hoạt động</h2>
+          <button id="clearLogsBtn" class="btn btn-ghost btn-sm">Xóa nhật ký</button>
+        </div>
+        <p class="card-desc">Ghi lại từng bước: kết nối ví, gửi giao dịch, sự kiện từ blockchain và lỗi (nếu có).</p>
+        <div id="logsContainer" class="logs-container mono"></div>
+      </div>
+    </section>
+
+    <footer class="footer">BlogChain · Dự án học tập Web3 · Dữ liệu lưu trên blockchain công khai</footer>
   </div>
+
+  <!-- Thông báo nổi -->
+  <div id="toastArea" class="toast-area" aria-live="polite"></div>
 
   <!-- Cửa sổ chi tiết bài viết -->
   <div id="detailModal" class="modal">
-    <div class="modal-box">
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
       <div class="modal-head">
         <h3 id="detailTitle" class="modal-title">Chi tiết bài viết</h3>
-        <button id="detailCloseBtn" class="btn-text">Đóng ✕</button>
+        <button id="detailCloseBtn" class="btn btn-ghost btn-sm" aria-label="Đóng">Đóng ✕</button>
       </div>
       <div id="detailBody" class="modal-body"></div>
     </div>
