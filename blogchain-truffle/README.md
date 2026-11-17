@@ -9,14 +9,17 @@ blogchain-truffle/
 ├── contracts/
 │   ├── Migrations.sol        # contract chuẩn của Truffle
 │   ├── BlogChain.sol         # contract blog: đăng, sửa, xóa mềm, đọc bài
-│   └── Payments.sol          # chuyển ETH giữa các ví kèm ghi chú, phát sự kiện Transferred
+│   ├── Payments.sol          # chuyển ETH giữa các ví kèm ghi chú, phát sự kiện Transferred
+│   └── DocumentRegistry.sol  # xác thực tài liệu: đăng ký / thu hồi mã băm SHA-256 của file
 ├── migrations/
 │   ├── 1_initial_migration.js
 │   ├── 2_deploy_blogchain.js # deploy BlogChain
-│   └── 3_deploy_payments.js  # deploy Payments
+│   ├── 3_deploy_payments.js  # deploy Payments
+│   └── 4_deploy_document_registry.js # deploy DocumentRegistry
 ├── test/
 │   ├── blogchain.test.js     # 9 test tự động
-│   └── payments.test.js      # 6 test tự động
+│   ├── payments.test.js      # 6 test tự động
+│   └── documentRegistry.test.js # 8 test tự động
 └── truffle-config.js         # kết nối Ganache 127.0.0.1:7545, solc 0.8.19
 ```
 
@@ -67,8 +70,21 @@ truffle migrate --network sepolia
 ```
 
 5. Dán địa chỉ contract và số block lúc deploy vào `NETWORKS.sepolia` trong `dapp/app.js`:
-   `BlogChain` → `contractAddress`, `deployBlock`; `Payments` → `paymentsAddress`, `paymentsDeployBlock`.
-   Chỉ deploy thêm một contract mới (ví dụ Payments) mà không đụng BlogChain: `truffle migrate -f 3 --to 3 --network sepolia`.
+   `BlogChain` → `contractAddress`, `deployBlock`; `Payments` → `paymentsAddress`, `paymentsDeployBlock`;
+   `DocumentRegistry` → `docsAddress`, `docsDeployBlock`.
+   Chỉ deploy thêm một contract mới mà không đụng các contract cũ: `truffle migrate -f 4 --to 4 --network sepolia`
+   (số 4 là số thứ tự file migration).
+
+Contract đang dùng trên Sepolia:
+
+| Contract | Địa chỉ |
+|---|---|
+| BlogChain | `0x1b59c8aAAa7a258eafe7c708Fc27b6d4e2a7e7F0` |
+| Payments | `0xaDBF8d7370383A83Eef6d3844b30f285Fc9f7e1c` |
+| DocumentRegistry | `0xb6a99853dC40129d69D3A0e27438Fd4305A9654A` |
+
+Lưu ý gas: Sepolia tính gas cao hơn Ganache nhiều (deploy DocumentRegistry: ~5,4 triệu gas trên Sepolia so với ~0,8 triệu trên Ganache).
+Nếu deploy báo "ran out of gas" dù contract đơn giản, thường là do số dư ví < gas tối đa × `maxFeePerGas` trong `truffle-config.js`.
 6. Commit, push, rồi bật GitHub Pages (Settings → Pages → nhánh `main`). Link DApp:
    `https://truonguyvu.github.io/Blogchain/dapp/`
 

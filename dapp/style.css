@@ -30,6 +30,8 @@
   --transfer-soft: #fff1e6;
   --lookup: #1d64c8;
   --lookup-soft: #e6f0ff;
+  --verify: #0f766e;
+  --verify-soft: #e3f5f2;
   --logs: #475569;
   --logs-soft: #f1f5f9;
 
@@ -317,7 +319,7 @@ code {
 /* ---------- Thẻ chức năng ---------- */
 .tabs {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 10px;
   background: var(--surface);
   padding: 8px;
@@ -349,12 +351,14 @@ code {
 .tab-blog[aria-selected="true"] { background: var(--blog); color: #fff; }
 .tab-transfer[aria-selected="true"] { background: var(--transfer); color: #fff; }
 .tab-lookup[aria-selected="true"] { background: var(--lookup); color: #fff; }
+.tab-verify[aria-selected="true"] { background: var(--verify); color: #fff; }
 .tab-logs[aria-selected="true"] { background: var(--logs); color: #fff; }
 
 /* Màu chủ đạo của từng khu vực: viền trên của thẻ card */
 .theme-blog { --accent: var(--blog); --accent-soft: var(--blog-soft); }
 .theme-transfer { --accent: var(--transfer); --accent-soft: var(--transfer-soft); }
 .theme-lookup { --accent: var(--lookup); --accent-soft: var(--lookup-soft); }
+.theme-verify { --accent: var(--verify); --accent-soft: var(--verify-soft); }
 .theme-logs { --accent: var(--logs); --accent-soft: var(--logs-soft); }
 
 /* ---------- Card ---------- */
@@ -537,6 +541,9 @@ textarea.input-field { resize: vertical; line-height: 1.6; }
 
 .btn-info { background: var(--lookup); color: #fff; }
 .btn-info:hover:not(:disabled) { background: #1650a3; }
+
+.btn-verify { background: var(--verify); color: #fff; }
+.btn-verify:hover:not(:disabled) { background: #0b5c55; }
 
 .btn-warning { background: var(--warning-soft); color: var(--warning); border-color: #fcd34d; }
 .btn-warning:hover:not(:disabled) { background: #fde68a; }
@@ -898,7 +905,7 @@ textarea.input-field { resize: vertical; line-height: 1.6; }
   .page { padding: 20px 16px 40px; gap: 18px; }
   .wallet-strip { grid-template-columns: 1fr; }
   .wallet-item + .wallet-item { border-left: 0; border-top: 1px solid var(--border); }
-  .tabs { grid-template-columns: repeat(2, 1fr); }
+  .tabs { grid-template-columns: repeat(3, 1fr); }
   .card { padding: 20px 18px; }
   .input-row { flex-direction: column; }
   .detail-row { flex-direction: column; gap: 2px; }
@@ -909,3 +916,78 @@ textarea.input-field { resize: vertical; line-height: 1.6; }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
+
+/* ---------- Xác thực tài liệu ---------- */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 130px;
+  padding: 20px;
+  border: 2px dashed var(--border-strong);
+  border-radius: 14px;
+  background: var(--surface-soft);
+  color: var(--text-secondary);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background-color 0.2s;
+  word-break: break-word;
+}
+
+.dropzone .icon { width: 34px; height: 34px; color: var(--accent); }
+.dropzone:hover,
+.dropzone.dragover { border-color: var(--accent); background: var(--accent-soft); }
+.dropzone:focus-within { outline: 3px solid #ff9a4d; outline-offset: 2px; }
+
+.doc-result:empty { display: none; }
+
+.doc-result {
+  border-radius: 12px;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  background: var(--surface-soft);
+}
+
+.doc-status {
+  font-size: 1.1rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.doc-result.doc-ok { background: #ecfdf5; border-color: #a7f3d0; }
+.doc-result.doc-ok .doc-status { color: var(--success); }
+.doc-result.doc-revoked { background: var(--warning-soft); border-color: #fcd34d; }
+.doc-result.doc-revoked .doc-status { color: var(--warning); }
+.doc-result.doc-missing { background: var(--danger-soft); border-color: #fca5a5; }
+.doc-result.doc-missing .doc-status { color: var(--danger); }
+
+.doc-register {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 4px;
+}
+
+.doc-register[hidden] { display: none; }
+
+.status-pill {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.status-pill.valid { background: #ecfdf5; color: var(--success); }
+.status-pill.revoked { background: var(--warning-soft); color: var(--warning); }
