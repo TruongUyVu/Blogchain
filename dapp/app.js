@@ -314,6 +314,7 @@ const NETWORKS = {
     paymentsAddress: '0xaDBF8d7370383A83Eef6d3844b30f285Fc9f7e1c', // contract Payments (3_deploy_payments.js)
     paymentsDeployBlock: 12151014,
     priorityFeeGwei: '0.05', // tip trả cho validator, xem feeOverrides()
+    readRpc: 'https://ethereum-sepolia-rpc.publicnode.com', // RPC công khai để ai cũng đọc được, không cần ví
     explorer: 'https://sepolia.etherscan.io',
     params: {
       chainId: '0xaa36a7',
@@ -331,6 +332,7 @@ const NETWORKS = {
     paymentsAddress: '',
     paymentsDeployBlock: 0,
     priorityFeeGwei: null, // Ganache: để MetaMask tự chọn phí
+    readRpc: 'http://127.0.0.1:7545',
     explorer: null,
     params: {
       chainId: '0x539',
@@ -343,6 +345,37 @@ const NETWORKS = {
 
 // Mạng đang dùng. Chạy thử trên máy với Ganache thì đổi thành NETWORKS.ganache
 const NET = NETWORKS.sepolia;
+
+// Provider chỉ để ĐỌC dữ liệu qua RPC công khai: ai mở trang cũng xem được bài viết và lịch sử, không cần MetaMask.
+// Ghi dữ liệu (đăng bài, chuyển tiền) vẫn phải ký bằng ví qua `signer`.
+let readProvider = new ethers.JsonRpcProvider(NET.readRpc, NET.chainId, { staticNetwork: true });
+
+// RPC công khai chỉ cho đọc sự kiện tối đa 50.000 block mỗi lần → chia khoảng block thành từng đoạn
+const LOG_CHUNK = 45000;
+async function queryLogs(c, filter, fromBlock) {
+  const latest = await readProvider.getBlockNumber();
+  const out = [];
+  for (let start = fromBlock; start <= latest; start += LOG_CHUNK) {
+    out.push(...await c.queryFilter(filter, start, Math.min(start + LOG_CHUNK - 1, latest)));
+  }
+  return out;
+}
+
+// Trước mỗi giao dịch: phải có ví và ví phải ở đúng mạng
+// (nếu không kiểm tra, MetaMask đang ở mạng khác - kể cả mạng thật - vẫn gửi giao dịch đi)
+async function ensureWallet() {
+  if (!signer) {
+    addLog('Hãy kết nối ví MetaMask để thực hiện giao dịch.', 'warn');
+    await connectWallet();
+    if (!signer) return false;
+  }
+  const chainIdNow = Number((await provider.getNetwork()).chainId);
+  if (chainIdNow !== NET.chainId) {
+    addLog(`Ví đang ở sai mạng (Chain ID ${chainIdNow}). Bấm "Chuyển sang ${NET.label}" rồi thử lại.`, 'warn');
+    return false;
+  }
+  return true;
+}
 
 // Thêm (nếu chưa có) và chuyển MetaMask sang mạng của DApp
 async function switchNetwork() {
@@ -378,7 +411,7 @@ async function switchNetwork() {
 // MetaMask hiện mức này là "Site suggested"; người dùng vẫn đổi được nếu muốn.
 async function feeOverrides() {
   if (!NET.priorityFeeGwei) return {};
-  const block = await provider.getBlock('latest');
+  const block = await readProvider.getBlock('latest');
   const tip = ethers.parseUnits(NET.priorityFeeGwei, 'gwei');
   return { maxPriorityFeePerGas: tip, maxFeePerGas: block.baseFeePerGas * 2n + tip };
 }
@@ -470,11 +503,9 @@ async function connectWallet() {
     onboardCard.hidden = true;
     addLog(`Đã kết nối thành công với ví: ${userAccount}`, 'success', true);
 
-    // Có sẵn địa chỉ contract thì tự nạp luôn, người dùng không phải làm Bước 1
-    if (!contract && ethers.isAddress(contractAddressInput.value.trim())) {
-      await loadContract();
-    }
-    await initPayments();
+    // Dữ liệu đã được đọc sẵn khi mở trang; vẽ lại để hiện nút Sửa/Xóa cho bài của mình và nhãn "(bạn)"
+    if (contract) loadPosts();
+    if (payments) loadTransfers();
 
   } catch (error) {
     console.error(error);
@@ -519,49 +550,26 @@ async function loadContract() {
     return;
   }
 
-  if (!signer) {
-    addLog('Vui lòng kết nối ví MetaMask trước khi nạp Contract.', 'warn');
-    await connectWallet();
-    if (!signer) return;
-  }
-
   try {
     addLog(`Đang kết nối tới Contract tại: ${address}...`, 'info');
 
-    // Kiểm tra địa chỉ có thực sự chứa contract trên mạng hiện tại không
-    // (hay gặp khi Ganache bị reset hoặc MetaMask đang ở mạng khác)
-    const code = await provider.getCode(address);
+    // Kiểm tra địa chỉ có thực sự chứa contract trên mạng của DApp không (hay gặp khi Ganache bị reset)
+    const code = await readProvider.getCode(address);
     if (code === '0x') {
-      addLog(`Không có contract nào ở địa chỉ này trên mạng MetaMask đang chọn. Hãy kiểm tra lại địa chỉ (sau mỗi lần truffle migrate) và chắc chắn MetaMask đang ở mạng ${NET.label}.`, 'error');
+      addLog(`Không có contract nào ở địa chỉ này trên mạng ${NET.label}. Hãy kiểm tra lại địa chỉ (sau mỗi lần truffle migrate).`, 'error');
       return;
     }
 
-    // Gỡ listener của contract cũ (nếu nạp lại) để không bị nhận sự kiện trùng
-    if (contract) await contract.removeAllListeners();
-
-    contract = new ethers.Contract(address, CONTRACT_ABI, signer);
+    // Contract gắn với readProvider để đọc; khi gửi giao dịch thì dùng contract.connect(signer)
+    contract = new ethers.Contract(address, CONTRACT_ABI, readProvider);
     blockTimeCache.clear();
 
     contractStatusBox.className = 'contract-status-box active';
     contractStatusText.innerHTML = `✅ Đã kết nối Contract: <strong>${address.slice(0, 10)}...${address.slice(-6)}</strong>`;
     addLog(`Đã nạp Contract BlogChain thành công!`, 'success');
 
-    // Tự động đọc danh sách bài lần đầu
+    // Tự động đọc danh sách bài lần đầu (sự kiện mới được theo dõi bởi pollNewEvents)
     await loadPosts();
-
-    // Lắng nghe sự kiện của BlogChain trên Blockchain thời gian thực
-    contract.on('PostCreated', (id, author, title) => {
-      addLog(`⚡ [Event PostCreated] Bài #${id} "${title}" được đăng bởi ${shortAddr(author)}`, 'success');
-      loadPosts();
-    });
-    contract.on('PostEdited', (id, author) => {
-      addLog(`⚡ [Event PostEdited] Bài #${id} được sửa bởi ${shortAddr(author)}`, 'success');
-      loadPosts();
-    });
-    contract.on('PostDeleted', (id, author) => {
-      addLog(`⚡ [Event PostDeleted] Bài #${id} bị xóa bởi ${shortAddr(author)}`, 'success');
-      loadPosts();
-    });
 
   } catch (error) {
     console.error(error);
@@ -572,7 +580,7 @@ async function loadContract() {
 // 4. Đọc danh sách bài viết (No Gas)
 async function loadPosts() {
   if (!contract) {
-    addLog('Chưa nạp contract BlogChain. Hãy bấm "Kết nối ví MetaMask" trước.', 'warn');
+    addLog('Chưa nạp được contract BlogChain. Hãy kiểm tra địa chỉ trong mục "Cài đặt nâng cao".', 'warn');
     return;
   }
 
@@ -671,7 +679,7 @@ const blockTimeCache = new Map();
 
 async function getBlockTime(blockNumber) {
   if (blockTimeCache.has(blockNumber)) return blockTimeCache.get(blockNumber);
-  const b = await provider.getBlock(blockNumber);
+  const b = await readProvider.getBlock(blockNumber);
   const t = b ? Number(b.timestamp) : 0;
   blockTimeCache.set(blockNumber, t);
   return t;
@@ -704,7 +712,7 @@ function hashSpan(hash) {
 // Đọc lại tiêu đề + nội dung đã gửi trong một giao dịch (dữ liệu vẫn nằm trong lịch sử chuỗi)
 async function readTxContent(hash) {
   try {
-    const tx = await provider.getTransaction(hash);
+    const tx = await readProvider.getTransaction(hash);
     const parsed = contract.interface.parseTransaction({ data: tx.data });
     if (!parsed) return null;
     const a = parsed.args;
@@ -768,9 +776,9 @@ async function openPostDetail(p) {
   try {
     const id = BigInt(p.id);
     const [created, edited, deleted] = await Promise.all([
-      contract.queryFilter(contract.filters.PostCreated(id), NET.deployBlock, 'latest'),
-      contract.queryFilter(contract.filters.PostEdited(id), NET.deployBlock, 'latest'),
-      contract.queryFilter(contract.filters.PostDeleted(id), NET.deployBlock, 'latest'),
+      queryLogs(contract, contract.filters.PostCreated(id), NET.deployBlock),
+      queryLogs(contract, contract.filters.PostEdited(id), NET.deployBlock),
+      queryLogs(contract, contract.filters.PostDeleted(id), NET.deployBlock),
     ]);
 
     detailBody.innerHTML = '';
@@ -836,12 +844,12 @@ function closeDetail() {
 
 // Bảng lịch sử mọi giao dịch của blog (đăng, sửa, xóa) lấy từ sự kiện trên chuỗi
 async function loadHistory() {
-  if (!contract || !provider) return;
+  if (!contract) return;
   try {
     const [created, edited, deleted] = await Promise.all([
-      contract.queryFilter(contract.filters.PostCreated(), NET.deployBlock, 'latest'),
-      contract.queryFilter(contract.filters.PostEdited(), NET.deployBlock, 'latest'),
-      contract.queryFilter(contract.filters.PostDeleted(), NET.deployBlock, 'latest'),
+      queryLogs(contract, contract.filters.PostCreated(), NET.deployBlock),
+      queryLogs(contract, contract.filters.PostEdited(), NET.deployBlock),
+      queryLogs(contract, contract.filters.PostDeleted(), NET.deployBlock),
     ]);
 
     const rows = [
@@ -944,7 +952,7 @@ function handleTxError(error) {
 // 5. Đăng bài mới / Lưu chỉnh sửa (Requires Gas & MetaMask Sign)
 async function submitPost() {
   if (!contract) {
-    addLog('Chưa nạp contract BlogChain. Hãy bấm "Kết nối ví MetaMask" trước.', 'warn');
+    addLog('Chưa nạp được contract BlogChain. Hãy kiểm tra địa chỉ trong mục "Cài đặt nâng cao".', 'warn');
     return;
   }
 
@@ -961,6 +969,8 @@ async function submitPost() {
     alert('Tiêu đề tối đa 100 byte, nội dung tối đa 2000 byte!');
     return;
   }
+
+  if (!(await ensureWallet())) return;
 
   try {
     submitPostBtn.disabled = true;
@@ -986,6 +996,7 @@ async function submitPost() {
 // 6. Xóa bài (xóa mềm, chỉ tác giả)
 async function deletePost(id) {
   if (!confirm(`Xóa bài #${id}? Dữ liệu cũ vẫn còn trong lịch sử blockchain.`)) return;
+  if (!(await ensureWallet())) return;
 
   try {
     submitPostBtn.disabled = true;
@@ -1022,7 +1033,7 @@ function addrLabel(addr) {
   return `${shortAddr(addr)}${mine ? ' (bạn)' : ''}`;
 }
 
-// Nạp contract Payments (gọi sau khi kết nối ví)
+// Nạp contract Payments (gọi khi mở trang, không cần ví)
 async function initPayments() {
   if (payments) return;
   if (!NET.paymentsAddress) {
@@ -1030,31 +1041,65 @@ async function initPayments() {
     return;
   }
   try {
-    const code = await provider.getCode(NET.paymentsAddress);
+    const code = await readProvider.getCode(NET.paymentsAddress);
     if (code === '0x') {
-      addLog(`Không tìm thấy contract Payments trên mạng MetaMask đang chọn. Hãy chuyển sang ${NET.label}.`, 'error');
+      addLog(`Không tìm thấy contract Payments trên mạng ${NET.label}.`, 'error');
       return;
     }
-    payments = new ethers.Contract(NET.paymentsAddress, PAYMENTS_ABI, signer);
+    // Gắn với readProvider để đọc; khi chuyển tiền thì dùng payments.connect(signer)
+    payments = new ethers.Contract(NET.paymentsAddress, PAYMENTS_ABI, readProvider);
     addLog('Đã nạp contract Payments (chuyển tiền).', 'success');
     await loadTransfers();
-
-    payments.on('Transferred', (id, from, to, amount) => {
-      addLog(`⚡ [Event Transferred] ${shortAddr(from)} → ${shortAddr(to)}: ${ethers.formatEther(amount)} ETH`, 'success');
-      loadTransfers();
-    });
   } catch (error) {
     console.error(error);
     addLog(`Không nạp được contract Payments: ${errorReason(error)}`, 'error');
   }
 }
 
+// Theo dõi sự kiện mới trên chuỗi (thay cho contract.on): cứ POLL_MS lại hỏi RPC công khai
+// xem có block mới không, nếu có thì đọc sự kiện trong các block đó và cập nhật giao diện.
+const POLL_MS = 15000;
+let watchedBlock = null;
+
+async function pollNewEvents() {
+  try {
+    const latest = await readProvider.getBlockNumber();
+    if (watchedBlock === null || latest <= watchedBlock) {
+      watchedBlock = Math.max(watchedBlock ?? latest, latest);
+      return;
+    }
+    const from = Math.max(watchedBlock + 1, latest - LOG_CHUNK); // tab ngủ lâu thì chỉ đọc đoạn gần nhất
+    watchedBlock = latest;
+
+    if (contract) {
+      const evs = await contract.queryFilter('*', from, latest);
+      for (const e of evs) {
+        const a = e.args;
+        if (e.eventName === 'PostCreated') addLog(`⚡ [Event PostCreated] Bài #${a.id} "${a.title}" được đăng bởi ${shortAddr(a.author)}`, 'success');
+        if (e.eventName === 'PostEdited') addLog(`⚡ [Event PostEdited] Bài #${a.id} được sửa bởi ${shortAddr(a.author)}`, 'success');
+        if (e.eventName === 'PostDeleted') addLog(`⚡ [Event PostDeleted] Bài #${a.id} bị xóa bởi ${shortAddr(a.author)}`, 'success');
+      }
+      if (evs.length) loadPosts();
+    }
+    if (payments) {
+      const evs = await payments.queryFilter(payments.filters.Transferred(), from, latest);
+      for (const e of evs) {
+        addLog(`⚡ [Event Transferred] ${shortAddr(e.args.from)} → ${shortAddr(e.args.to)}: ${ethers.formatEther(e.args.amount)} ETH`, 'success');
+      }
+      if (evs.length) loadTransfers();
+    }
+  } catch (error) {
+    console.warn('Không đọc được sự kiện mới', error);
+  }
+}
+
 // Chuyển ETH qua contract Payments (Requires Gas & MetaMask Sign)
 async function sendTransfer() {
   if (!payments) {
-    addLog('Chưa nạp contract Payments. Hãy kết nối MetaMask (đúng mạng) trước.', 'warn');
+    addLog(`Chưa nạp được contract Payments trên mạng ${NET.label}.`, 'warn');
     return;
   }
+  if (!(await ensureWallet())) return;
 
   const to = transferToInput.value.trim();
   const amountText = transferAmountInput.value.trim().replace(',', '.');
@@ -1114,7 +1159,11 @@ async function sendTransfer() {
 async function loadTransfers() {
   if (!payments) return;
   try {
-    let events = await payments.queryFilter(payments.filters.Transferred(), NET.paymentsDeployBlock, 'latest');
+    let events = await queryLogs(payments, payments.filters.Transferred(), NET.paymentsDeployBlock);
+    if (myTransfersChk.checked && !userAccount) {
+      addLog('Hãy kết nối ví MetaMask để lọc giao dịch của ví bạn.', 'warn');
+      myTransfersChk.checked = false;
+    }
     if (myTransfersChk.checked && userAccount) {
       const me = userAccount.toLowerCase();
       events = events.filter((e) => e.args.from.toLowerCase() === me || e.args.to.toLowerCase() === me);
@@ -1178,14 +1227,10 @@ async function lookupTx() {
     alert('Mã giao dịch phải có dạng 0x + 64 ký tự (0-9, a-f).');
     return;
   }
-  if (!provider) {
-    addLog('Hãy kết nối MetaMask trước khi tra cứu giao dịch.', 'warn');
-    return;
-  }
 
   txLookupResult.innerHTML = '<div class="display-content">Đang tra cứu trên blockchain...</div>';
   try {
-    const [tx, receipt] = await Promise.all([provider.getTransaction(hash), provider.getTransactionReceipt(hash)]);
+    const [tx, receipt] = await Promise.all([readProvider.getTransaction(hash), readProvider.getTransactionReceipt(hash)]);
     txLookupResult.innerHTML = '';
     if (!tx) {
       const nf = document.createElement('div');
@@ -1267,7 +1312,7 @@ async function lookupTx() {
 switchNetworkBtn.querySelector('span').textContent = `Chuyển sang ${NET.label}`;
 document.getElementById('networkSubtitle').textContent = `Mọi bài viết và giao dịch được ghi công khai trên mạng ${NET.label}, không thể sửa lén.`;
 if (NET.contractAddress) contractAddressInput.value = NET.contractAddress;
-addLog(`Sẵn sàng. DApp dùng mạng ${NET.label} (Chain ID ${NET.chainId}). Bấm "Kết nối ví MetaMask" để bắt đầu.`, 'info');
+addLog(`Sẵn sàng. DApp dùng mạng ${NET.label} (Chain ID ${NET.chainId}). Xem bài viết và lịch sử không cần ví; muốn đăng bài hoặc chuyển tiền thì bấm "Kết nối ví MetaMask".`, 'info');
 
 // Mở lại thẻ chức năng lần trước (nếu có)
 let savedTab = null;
@@ -1302,9 +1347,10 @@ if (window.ethereum) {
     if (accounts.length === 0) {
       location.reload();
     } else {
+      if (!provider) return; // chưa bấm "Kết nối ví" trên trang này thì bỏ qua
       userAccount = accounts[0];
       // Signer phải đổi theo tài khoản mới, nếu không giao dịch vẫn ký bằng ví cũ
-      if (provider) signer = await provider.getSigner();
+      signer = await provider.getSigner();
       connectBtnText.textContent = shortAddr(userAccount);
       updateWalletInfo();
       addLog(`Chuyển sang tài khoản ví: ${userAccount}`, 'info');
@@ -1318,3 +1364,10 @@ if (window.ethereum) {
     window.location.reload();
   });
 }
+
+// Mở trang là đọc dữ liệu ngay qua RPC công khai, chưa cần kết nối ví
+(async () => {
+  if (NET.contractAddress) await loadContract();
+  await initPayments();
+  setInterval(pollNewEvents, POLL_MS);
+})();
