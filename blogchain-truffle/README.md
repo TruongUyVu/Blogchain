@@ -13,18 +13,23 @@ blogchain-truffle/
 │   ├── BlogChain.sol                  # blog: đăng, sửa, xóa mềm, đọc bài (chỉ tác giả sửa / xóa)
 │   ├── Payments.sol                   # chuyển ETH giữa các ví kèm ghi chú, phát sự kiện Transferred
 │   ├── DocumentRegistry.sol           # xác thực tài liệu: đăng ký / thu hồi mã băm SHA-256 của file
-│   └── BlogModeration.sol             # kiểm duyệt: chủ sở hữu + quản trị viên ẩn / hiện bài của BlogChain
+│   ├── BlogModeration.sol             # kiểm duyệt: chủ sở hữu + quản trị viên ẩn / hiện bài của BlogChain
+│   ├── IssuerRegistry.sol             # danh bạ người phát hành đã xác minh (ví → tên đơn vị), chủ sở hữu quản lý
+│   └── MultiSend.sol                  # phát ETH cho nhiều ví (tối đa 100) trong một giao dịch
 ├── migrations/
 │   ├── 1_initial_migration.js
 │   ├── 2_deploy_blogchain.js
 │   ├── 3_deploy_payments.js
 │   ├── 4_deploy_document_registry.js
-│   └── 5_deploy_blog_moderation.js    # trỏ tới BlogChain đã deploy, không deploy lại blog
+│   ├── 5_deploy_blog_moderation.js    # trỏ tới BlogChain đã deploy, không deploy lại blog
+│   └── 6_deploy_issuer_registry_and_multisend.js
 ├── test/
 │   ├── blogchain.test.js              # 9 test
 │   ├── payments.test.js               # 6 test
 │   ├── documentRegistry.test.js       # 8 test
 │   ├── blogModeration.test.js         # 9 test
+│   ├── issuerRegistry.test.js         # 7 test
+│   ├── multiSend.test.js              # 5 test
 │   ├── helpers.js                     # hàm dùng chung: expectRevert, increaseTime (tua nhanh thời gian), txCost, balanceOf
 │   └── helpers.test.js                # 2 test cho chính các hàm hỗ trợ
 ├── scripts/
@@ -58,7 +63,7 @@ notepad .env
 
 | Lệnh | Việc làm |
 |---|---|
-| `npm test` | Chạy 34 test trên Ganache (`truffle test`, cần mở Ganache) |
+| `npm test` | Chạy 46 test trên Ganache (`truffle test`, cần mở Ganache) |
 | `npm run deploy:ganache` | Deploy lại toàn bộ lên Ganache rồi cập nhật `../dapp/contracts.json` |
 | `npm run deploy:sepolia` | Deploy các migration chưa chạy lên Sepolia rồi cập nhật `../dapp/contracts.json` |
 | `npm run export` | Chỉ cập nhật `../dapp/contracts.json` từ `build/contracts` (sau khi deploy bằng `truffle migrate` trực tiếp) |
@@ -120,6 +125,8 @@ Contract đang dùng trên Sepolia:
 | Payments | `0xaDBF8d7370383A83Eef6d3844b30f285Fc9f7e1c` | tắt |
 | DocumentRegistry | `0xb6a99853dC40129d69D3A0e27438Fd4305A9654A` | tắt |
 | BlogModeration | `0x232959C6b36B7c99FDbe4b48DB6687DF915F6a9d` | bật |
+| IssuerRegistry | `0x08Cd40123fa2D4e6EabbaC70e6887E4EDd67D6d3` | bật |
+| MultiSend | `0x1784eB2868c7ba89DdAbc685C4E1F817a4c4Da80` | bật |
 
 ## Gas và phí
 
@@ -133,6 +140,8 @@ Contract đang dùng trên Sepolia:
 | Payments | ~3,6 triệu gas | ~1,8 triệu gas |
 | DocumentRegistry | ~5,5 triệu gas | ~2,5 triệu gas |
 | BlogModeration | – | ~5,0 triệu gas |
+| IssuerRegistry | – | ~4,3 triệu gas |
+| MultiSend | – | ~2,8 triệu gas |
 
 - Deploy dùng tip `maxPriorityFeePerGas` = 0,05 gwei (Truffle mặc định 2,5 gwei, đắt gấp ~50 lần) và trần
   `maxFeePerGas` = 0,5 gwei. Đừng đặt trần quá cao: mạng yêu cầu số dư ≥ gas tối đa × trần, thiếu thì Truffle báo nhầm
@@ -145,7 +154,7 @@ Contract đang dùng trên Sepolia:
 Để ai cũng đọc được mã Solidity và kiểm chứng nó khớp với mã đang chạy trên chuỗi. `scripts/verify-contracts.js`
 biên dịch, so mã với mã trên chuỗi, **khớp 100% mới gửi đi**.
 
-- **Sourcify** (không cần khóa): cả 4 contract đã xác minh mức `exact_match`, xem tại
+- **Sourcify** (không cần khóa): cả 6 contract đã xác minh mức `exact_match`, xem tại
   `https://repo.sourcify.dev/11155111/<địa chỉ contract>` (chân trang DApp có link sẵn).
 - **Etherscan**: cần `ETHERSCAN_API_KEY` trong `.env` (etherscan.io → API Keys). Etherscan **không** tự lấy kết quả
   từ Sourcify nên phải xác minh riêng: thêm khóa rồi chạy lại `npm run verify:legacy` / `npm run verify`.
@@ -176,8 +185,9 @@ dapp/
 ├── js/
 │   ├── core.js         # LÕI: mạng & RPC, kho contract, ví, runTx, nhật ký, theo dõi sự kiện, registerModule
 │   ├── blog.js         # thẻ Blog (BlogChain + BlogModeration)
-│   ├── transfer.js     # thẻ Chuyển tiền (Payments)
+│   ├── transfer.js     # thẻ Chuyển tiền (Payments + MultiSend)
 │   ├── docs.js         # thẻ Xác thực (DocumentRegistry)
+│   ├── issuers.js      # người phát hành đã xác minh (IssuerRegistry), trong thẻ Xác thực
 │   └── lookup.js       # thẻ Tra cứu (mọi giao dịch)
 └── app.js              # khởi động: startApp(), nạp SAU CÙNG
 ```

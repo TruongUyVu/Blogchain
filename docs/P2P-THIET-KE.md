@@ -134,7 +134,7 @@ Dùng `test/helpers.js`: `expectRevert`, `increaseTime` (tua nhanh thời gian),
 
 ## 9. Quy trình triển khai (theo `blogchain-truffle/README.md`)
 
-1. Viết `contracts/P2PLending.sol` + `migrations/6_deploy_p2p_lending.js` + `test/p2pLending.test.js`; `npm test` qua hết.
+1. Viết `contracts/P2PLending.sol` + `migrations/7_deploy_p2p_lending.js` (số migration tiếp theo) + `test/p2pLending.test.js`; `npm test` qua hết.
 2. Đo phí trên Sepolia (`eth_estimateGas`), báo giảng viên trước khi deploy.
 3. `npm run deploy:sepolia` → `npm run verify` → tăng `?v=` của `CONTRACTS_JSON_URL` trong `dapp/js/core.js`.
 4. Thêm `js/lending.js`, thẻ + khung nội dung trong `index.html`, thử trên Ganache, tăng `?v=`, commit, push.

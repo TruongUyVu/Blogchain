@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <!-- ?v=...: đổi số này mỗi lần sửa CSS/JS để trình duyệt tải bản mới thay vì bản lưu tạm (GitHub Pages lưu 10 phút) -->
-  <link rel="stylesheet" href="style.css?v=13" />
+  <link rel="stylesheet" href="style.css?v=14" />
   <!-- Ethers.js v6 CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
 </head>
@@ -247,8 +247,35 @@
             <li><strong>Đây là ETH thử nghiệm (Sepolia)</strong>, không có giá trị thật.</li>
             <li>Sau khi bấm <em>Chuyển tiền</em>, xác nhận trong cửa sổ MetaMask. Giao dịch hoàn tất sau khoảng 15–30 giây.</li>
             <li>Bấm vào mã giao dịch trong bảng bên dưới để xem chi tiết.</li>
+            <li>Cần chia ETH cho cả lớp? Dùng <strong>Phát ETH cho nhiều ví</strong> bên dưới: một giao dịch, một lần ký.</li>
           </ul>
         </div>
+      </div>
+
+      <!-- Phát ETH cho nhiều ví (contract MultiSend); ẩn cho tới khi nạp được contract -->
+      <div id="multiSendCard" class="card" hidden>
+        <div class="card-head">
+          <h2 class="card-title">Phát ETH cho nhiều ví</h2>
+          <span class="chip chip-write">Một giao dịch · tốn phí gas</span>
+        </div>
+        <p class="card-desc">Ví dụ giảng viên chia ETH thử nghiệm cho cả lớp. Mỗi ví nhận <strong>cùng một số tiền</strong>; một địa chỉ sai thì cả lô bị hủy, không ai mất tiền.</p>
+        <div class="form-group">
+          <label for="multiAddressesInput">Danh sách ví nhận <span class="optional">(mỗi dòng một địa chỉ 0x..., tối đa 100 ví)</span></label>
+          <textarea id="multiAddressesInput" rows="5" placeholder="0x1234...&#10;0xabcd..." class="input-field mono"></textarea>
+        </div>
+        <div class="grid-2 grid-tight">
+          <div class="form-group">
+            <label for="multiAmountInput">Mỗi ví nhận (ETH)</label>
+            <input type="text" id="multiAmountInput" placeholder="Ví dụ: 0.001" inputmode="decimal" class="input-field input-amount mono" />
+          </div>
+          <div class="form-group">
+            <label for="multiNoteInput">Ghi chú <span class="optional">(không bắt buộc)</span></label>
+            <input type="text" id="multiNoteInput" placeholder="Ví dụ: ETH thực hành lớp FinTech" class="input-field" />
+          </div>
+        </div>
+        <div id="multiSummary" class="multi-summary">Nhập danh sách ví và số tiền để xem tổng.</div>
+        <button id="multiSendBtn" class="btn btn-success btn-lg w-100">Phát ETH</button>
+        <p class="hint">Hàm gọi: <code>sendEach(recipients, amountEach, note)</code> · Phí gas tăng theo số ví</p>
       </div>
 
       <div class="card">
@@ -324,9 +351,34 @@
             <span>Tải lại</span>
           </button>
         </div>
-        <p class="card-desc">Bấm vào dấu vân tay để kiểm tra tài liệu đó, bấm vào mã giao dịch để xem chi tiết.</p>
+        <p class="card-desc">Bấm vào dấu vân tay để kiểm tra tài liệu đó, bấm vào mã giao dịch để xem chi tiết. Nhãn <span class="issuer-badge">✔ tên đơn vị</span> nghĩa là người đăng ký đã được xác minh.</p>
         <div id="docsList" class="table-wrap"><div class="empty">Đang tải danh sách tài liệu...</div></div>
       </div>
+
+      <!-- Người phát hành đã xác minh (contract IssuerRegistry); ẩn cho tới khi nạp được contract -->
+      <details id="issuerPanel" class="card advanced" hidden>
+        <summary>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+          Người phát hành đã xác minh
+        </summary>
+        <p class="card-desc">
+          Ai cũng đăng ký được tài liệu. Danh bạ này cho biết ví nào thuộc <strong>đơn vị có thẩm quyền</strong> (Viện, giảng viên,
+          trợ giảng). Tài liệu do ví trong danh bạ đăng ký sẽ hiện tên đơn vị kèm dấu ✔; ví ngoài danh bạ hiện "chưa xác minh".
+        </p>
+        <div id="issuerList" class="table-wrap"><div class="empty">Đang tải...</div></div>
+
+        <div id="issuerOwnerBox" class="mod-owner" hidden>
+          <label for="issuerAddressInput">Địa chỉ ví (0x...)</label>
+          <input type="text" id="issuerAddressInput" placeholder="0x..." class="input-field mono" />
+          <label for="issuerNameInput">Tên hiển thị <span class="optional">(tên đơn vị / chức danh, công khai, tối đa 100 byte; không ghi họ tên + mã sinh viên)</span></label>
+          <input type="text" id="issuerNameInput" placeholder="Ví dụ: Trợ giảng lớp FinTech" class="input-field" />
+          <div class="mod-owner-actions">
+            <button id="issuerSetBtn" class="btn btn-secondary">Xác minh / đổi tên</button>
+            <button id="issuerRemoveBtn" class="btn btn-ghost">Gỡ xác minh</button>
+          </div>
+        </div>
+        <p id="issuerYourRole" class="hint">Chỉ chủ sở hữu danh bạ (ví của Viện) mới thêm / gỡ được.</p>
+      </details>
     </section>
 
     <!-- ===================== TRA CỨU ===================== -->
@@ -391,10 +443,11 @@
   </div>
 
   <!-- Lõi → các module chức năng → app.js (khởi động). Thêm chức năng mới: thêm <script src="js/<tên>.js"> trước app.js -->
-  <script src="js/core.js?v=15"></script>
+  <script src="js/core.js?v=16"></script>
   <script src="js/blog.js?v=15"></script>
-  <script src="js/transfer.js?v=15"></script>
-  <script src="js/docs.js?v=15"></script>
+  <script src="js/transfer.js?v=16"></script>
+  <script src="js/docs.js?v=16"></script>
+  <script src="js/issuers.js?v=16"></script>
   <script src="js/lookup.js?v=15"></script>
   <script src="app.js?v=15"></script>
 </body>

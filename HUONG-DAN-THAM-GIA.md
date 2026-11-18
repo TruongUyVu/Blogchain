@@ -50,7 +50,7 @@ Khoảng **0,001 ETH** đủ để đăng chừng 15 bài hoặc chuyển tiền
 | Thẻ | Thử làm |
 |---|---|
 | **Chuyển tiền** | Chuyển 0,0001 ETH cho bạn cùng lớp kèm ghi chú, xem giao dịch hiện trong bảng lịch sử của cả hai |
-| **Xác thực** | Đăng ký một file (ví dụ bài tập PDF), sửa một chữ trong file rồi kiểm tra lại: DApp báo file **không khớp** |
+| **Xác thực** | Đăng ký một file (ví dụ bài tập PDF), sửa một chữ trong file rồi kiểm tra lại: DApp báo file **không khớp**. Tài liệu bạn đăng ký hiện nhãn **"chưa xác minh"**, còn tài liệu của Viện hiện **"✔ Viện Công nghệ Tài chính…"**: cùng là bản gốc, nhưng chỉ tài liệu có dấu ✔ là do đơn vị có thẩm quyền phát hành |
 | **Tra cứu** | Dán mã giao dịch (TX hash) để xem người gửi, người nhận, số tiền, phí gas |
 | **Nhật ký** | Xem từng bước DApp làm: kết nối ví, gửi giao dịch, nhận sự kiện mới từ blockchain |
 
@@ -76,8 +76,12 @@ Khoảng **0,001 ETH** đủ để đăng chừng 15 bài hoặc chuyển tiền
 
 ## Dành cho giảng viên
 
-- **Chia ETH cho lớp:** thu địa chỉ ví của sinh viên, chuyển mỗi bạn khoảng 0,001 ETH ở thẻ **Chuyển tiền**
-  (mỗi lần chuyển tốn phí rất nhỏ).
+- **Chia ETH cho lớp:** thu địa chỉ ví của sinh viên (ví dụ qua Google Form), vào thẻ **Chuyển tiền** → **Phát ETH cho nhiều ví**,
+  dán danh sách (mỗi dòng một địa chỉ, tối đa 100 ví), nhập số tiền mỗi ví (ví dụ 0,001) rồi bấm **Phát ETH**:
+  **một giao dịch, một lần ký** cho cả lớp. Địa chỉ sai được báo ngay khi dán; một địa chỉ sai thì cả lô bị hủy, không ai mất tiền.
+- **Tài liệu chính thức:** đăng ký bằng **ví của Viện** (ví chủ sở hữu) để tài liệu hiện nhãn **✔ Viện Công nghệ Tài chính…**.
+  Muốn trợ giảng cũng phát hành được tài liệu chính thức: thẻ **Xác thực** → **Người phát hành đã xác minh**, nhập ví và
+  tên chức danh (ví dụ "Trợ giảng lớp FinTech"), bấm **Xác minh / đổi tên**. Không ghi họ tên + mã sinh viên (công khai vĩnh viễn).
 - **Kiểm duyệt bài viết:** kết nối bằng **ví chủ sở hữu** (ví đã dùng để deploy contract). Mỗi bài có nút **🚫 Ẩn bài**:
   nhập lý do, xác nhận trong MetaMask. Người xem chỉ thấy "Bài viết đã bị quản trị viên ẩn" kèm lý do; bấm
   **👁️ Hiện lại** để bỏ ẩn (đánh dấu ô "Hiện cả bài đã xóa hoặc bị ẩn" để thấy các bài đang ẩn).

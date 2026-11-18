@@ -13,8 +13,8 @@ tài liệu trên blockchain. Chạy trên mạng thử nghiệm **Sepolia**, gi
 | Thẻ | Làm được gì | Cần ví MetaMask? |
 |---|---|---|
 | **Blog** | Xem bài viết và lịch sử đăng / sửa / xóa; đăng bài; tác giả sửa hoặc xóa (xóa mềm) bài của mình; giảng viên và quản trị viên ẩn bài không phù hợp kèm lý do công khai | Xem: không · Đăng, sửa, xóa, ẩn: có |
-| **Chuyển tiền** | Chuyển ETH thử nghiệm sang ví khác kèm ghi chú; bảng lịch sử chuyển tiền | Xem lịch sử: không · Chuyển: có |
-| **Xác thực** | Kéo thả một file để kiểm tra có đúng bản gốc đã đăng ký không; đăng ký hoặc thu hồi tài liệu | Kiểm tra: không · Đăng ký, thu hồi: có |
+| **Chuyển tiền** | Chuyển ETH thử nghiệm sang ví khác kèm ghi chú; **phát ETH cho nhiều ví** (tối đa 100) trong một giao dịch; bảng lịch sử chuyển tiền | Xem lịch sử: không · Chuyển: có |
+| **Xác thực** | Kéo thả một file để kiểm tra có đúng bản gốc đã đăng ký không, và **ai phát hành** (✔ đơn vị đã xác minh hay ví chưa xác minh); đăng ký hoặc thu hồi tài liệu | Kiểm tra: không · Đăng ký, thu hồi: có |
 | **Tra cứu** | Dán mã giao dịch (TX hash) để xem người gửi, người nhận, số tiền, phí gas, trạng thái | Không |
 | **Nhật ký** | Ghi lại từng bước: kết nối ví, gửi giao dịch, sự kiện mới trên blockchain, lỗi | Không |
 
@@ -56,6 +56,8 @@ Trình duyệt người dùng
                                                  ├─ BlogChain         (bài viết)
                                                  ├─ BlogModeration    (kiểm duyệt: ẩn bài, trỏ tới BlogChain)
                                                  ├─ Payments          (chuyển tiền)
+                                                 ├─ MultiSend         (phát ETH cho nhiều ví)
+                                                 ├─ IssuerRegistry    (người phát hành đã xác minh)
                                                  └─ DocumentRegistry  (xác thực tài liệu)
 Giao diện: HTML/CSS/JS thuần + ethers.js v6, phục vụ bởi GitHub Pages; địa chỉ và ABI contract đọc từ dapp/contracts.json
 ```
@@ -68,12 +70,14 @@ Smart contract trên Sepolia, **mã nguồn đã xác minh** (Sourcify, mức `e
 | Payments | `0xaDBF8d7370383A83Eef6d3844b30f285Fc9f7e1c` | [Sourcify](https://repo.sourcify.dev/11155111/0xaDBF8d7370383A83Eef6d3844b30f285Fc9f7e1c) |
 | DocumentRegistry | `0xb6a99853dC40129d69D3A0e27438Fd4305A9654A` | [Sourcify](https://repo.sourcify.dev/11155111/0xb6a99853dC40129d69D3A0e27438Fd4305A9654A) |
 | BlogModeration | `0x232959C6b36B7c99FDbe4b48DB6687DF915F6a9d` | [Sourcify](https://repo.sourcify.dev/11155111/0x232959C6b36B7c99FDbe4b48DB6687DF915F6a9d) |
+| IssuerRegistry | `0x08Cd40123fa2D4e6EabbaC70e6887E4EDd67D6d3` | [Sourcify](https://repo.sourcify.dev/11155111/0x08Cd40123fa2D4e6EabbaC70e6887E4EDd67D6d3) |
+| MultiSend | `0x1784eB2868c7ba89DdAbc685C4E1F817a4c4Da80` | [Sourcify](https://repo.sourcify.dev/11155111/0x1784eB2868c7ba89DdAbc685C4E1F817a4c4Da80) |
 
 ## Cấu trúc thư mục
 
 ```
 Blogchain/
-├── blogchain-truffle/      # Smart contract (Solidity 0.8.19), migrations, 34 test tự động, script deploy / export / verify
+├── blogchain-truffle/      # Smart contract (Solidity 0.8.19), migrations, 46 test tự động, script deploy / export / verify
 │                           # → hướng dẫn chi tiết cho người phát triển: blogchain-truffle/README.md
 ├── dapp/                   # Giao diện web: index.html, style.css, js/ (lõi + từng chức năng), contracts.json (tạo tự động)
 ├── docs/P2P-THIET-KE.md    # Thiết kế chức năng cho vay ngang hàng (chưa triển khai)

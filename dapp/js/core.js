@@ -83,7 +83,7 @@ const NET = NETWORKS.sepolia;
 
 // ---------- Kho contract: ABI + địa chỉ đọc từ contracts.json ----------
 // contracts.json do lệnh "npm run export" (blogchain-truffle) tạo ra sau mỗi lần deploy; tăng ?v= khi file đổi.
-const CONTRACTS_JSON_URL = 'contracts.json?v=2';
+const CONTRACTS_JSON_URL = 'contracts.json?v=3';
 const ABI = {}; // tên contract → ABI
 const DEPLOYED = {}; // tên contract → { address, deployBlock } trên mạng NET
 

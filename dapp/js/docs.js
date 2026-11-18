@@ -130,19 +130,34 @@ async function checkDocument() {
     ]);
     const reg = regEvents[0];
 
+    // Người đăng ký có trong danh bạ người phát hành đã xác minh (module issuers.js) không
+    const issuer = typeof issuersEnabled === 'function' && issuersEnabled() ? issuerOf(r.issuer) : null;
     if (r.revoked) {
       docResult.classList.add('doc-revoked');
       status.textContent = '⚠ Tài liệu đã bị thu hồi';
     } else {
       docResult.classList.add('doc-ok');
-      status.textContent = '✔ Tài liệu hợp lệ: đúng bản gốc đã đăng ký';
+      status.textContent = issuer
+        ? `✔ Tài liệu hợp lệ: đúng bản gốc do ${issuer.name} phát hành`
+        : '✔ Tài liệu hợp lệ: đúng bản gốc đã đăng ký';
     }
 
     if (reg) docResult.appendChild(detailField('Tên tài liệu', reg.args.title));
     const issuerEl = document.createElement('span');
     issuerEl.className = 'mono';
-    issuerEl.textContent = r.issuer + (userAccount && r.issuer.toLowerCase() === userAccount.toLowerCase() ? ' (bạn)' : '');
+    issuerEl.textContent = r.issuer + (isMe(r.issuer) ? ' (bạn)' : '');
     docResult.appendChild(detailField('Người đăng ký', issuerEl));
+    if (typeof issuersEnabled === 'function' && issuersEnabled()) {
+      const who = document.createElement('span');
+      who.appendChild(issuerBadge(r.issuer));
+      if (!issuer) {
+        const note = document.createElement('div');
+        note.className = 'hint';
+        note.textContent = 'Ví này không có trong danh bạ người phát hành đã xác minh: file đúng là bản đã đăng ký, nhưng chưa rõ người đăng ký có thẩm quyền phát hành tài liệu này hay không.';
+        who.appendChild(note);
+      }
+      docResult.appendChild(detailField('Xác minh người phát hành', who));
+    }
     docResult.appendChild(detailField('Đăng ký lúc', formatTime(r.registeredAt)));
     if (revEvents[0]) docResult.appendChild(detailField('Thu hồi lúc', formatTime(revEvents[0].args.revokedAt)));
     if (reg) docResult.appendChild(detailField('Mã giao dịch', txChip(reg.transactionHash)));
@@ -245,8 +260,12 @@ async function loadDocuments() {
       tdTitle.className = 'note-cell';
       tdTitle.textContent = e.args.title;
       const tdIssuer = document.createElement('td');
-      tdIssuer.textContent = addrLabel(e.args.issuer);
-      tdIssuer.title = e.args.issuer;
+      if (typeof issuersEnabled === 'function' && issuersEnabled()) {
+        tdIssuer.appendChild(issuerBadge(e.args.issuer)); // "✔ tên đơn vị" hoặc "0x... · chưa xác minh"
+      } else {
+        tdIssuer.textContent = addrLabel(e.args.issuer);
+        tdIssuer.title = e.args.issuer;
+      }
 
       // Bấm vào dấu vân tay để kiểm tra tài liệu đó
       const tdHash = document.createElement('td');
@@ -295,6 +314,12 @@ docHashInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') checkPa
 docRegisterBtn.addEventListener('click', registerDocument);
 docRevokeBtn.addEventListener('click', revokeDocument);
 refreshDocsBtn.addEventListener('click', loadDocuments);
+
+// Vẽ lại bảng tài liệu và kết quả đang xem (module issuers.js gọi khi danh bạ người phát hành thay đổi)
+function refreshDocsView() {
+  if (docs) loadDocuments();
+  if (currentDoc) checkDocument();
+}
 
 // ---------- Đăng ký module với lõi (xem core.js) ----------
 registerModule({

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-17T08:45:43.490Z",
+  "generatedAt": "2026-11-18T03:03:54.858Z",
   "abi": {
     "BlogChain": [
       {
@@ -88,8 +88,7 @@
           }
         ],
         "stateMutability": "view",
-        "type": "function",
-        "constant": true
+        "type": "function"
       },
       {
         "inputs": [],
@@ -102,8 +101,7 @@
           }
         ],
         "stateMutability": "view",
-        "type": "function",
-        "constant": true
+        "type": "function"
       },
       {
         "inputs": [
@@ -176,8 +174,7 @@
           }
         ],
         "stateMutability": "view",
-        "type": "function",
-        "constant": true
+        "type": "function"
       },
       {
         "inputs": [
@@ -233,57 +230,124 @@
           }
         ],
         "stateMutability": "view",
-        "type": "function",
-        "constant": true
+        "type": "function"
       }
     ],
-    "Payments": [
+    "BlogModeration": [
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "blogAddress",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "constructor"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "bool",
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "by",
+            "type": "address"
+          }
+        ],
+        "name": "ModeratorUpdated",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "previousOwner",
+            "type": "address"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "newOwner",
+            "type": "address"
+          }
+        ],
+        "name": "OwnershipTransferred",
+        "type": "event"
+      },
       {
         "anonymous": false,
         "inputs": [
           {
             "indexed": true,
             "internalType": "uint256",
-            "name": "id",
+            "name": "postId",
             "type": "uint256"
           },
           {
             "indexed": true,
             "internalType": "address",
-            "name": "from",
+            "name": "moderator",
             "type": "address"
-          },
-          {
-            "indexed": true,
-            "internalType": "address",
-            "name": "to",
-            "type": "address"
-          },
-          {
-            "indexed": false,
-            "internalType": "uint256",
-            "name": "amount",
-            "type": "uint256"
           },
           {
             "indexed": false,
             "internalType": "string",
-            "name": "note",
+            "name": "reason",
             "type": "string"
           },
           {
             "indexed": false,
             "internalType": "uint256",
-            "name": "sentAt",
+            "name": "hiddenAt",
             "type": "uint256"
           }
         ],
-        "name": "Transferred",
+        "name": "PostHidden",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "uint256",
+            "name": "postId",
+            "type": "uint256"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "moderator",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "unhiddenAt",
+            "type": "uint256"
+          }
+        ],
+        "name": "PostUnhidden",
         "type": "event"
       },
       {
         "inputs": [],
-        "name": "MAX_NOTE_LENGTH",
+        "name": "MAX_REASON_LENGTH",
         "outputs": [
           {
             "internalType": "uint256",
@@ -296,7 +360,20 @@
       },
       {
         "inputs": [],
-        "name": "transferCount",
+        "name": "blog",
+        "outputs": [
+          {
+            "internalType": "contract IBlogChain",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "hiddenCount",
         "outputs": [
           {
             "internalType": "uint256",
@@ -310,25 +387,157 @@
       {
         "inputs": [
           {
-            "internalType": "address payable",
-            "name": "to",
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "name": "isModerator",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "owner",
+        "outputs": [
+          {
+            "internalType": "address",
+            "name": "",
+            "type": "address"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "account",
             "type": "address"
           },
           {
+            "internalType": "bool",
+            "name": "enabled",
+            "type": "bool"
+          }
+        ],
+        "name": "setModerator",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "newOwner",
+            "type": "address"
+          }
+        ],
+        "name": "transferOwnership",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "postId",
+            "type": "uint256"
+          },
+          {
             "internalType": "string",
-            "name": "note",
+            "name": "reason",
             "type": "string"
           }
         ],
-        "name": "sendEth",
-        "outputs": [
+        "name": "hidePost",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
           {
             "internalType": "uint256",
-            "name": "id",
+            "name": "postId",
             "type": "uint256"
           }
         ],
-        "stateMutability": "payable",
+        "name": "unhidePost",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "postId",
+            "type": "uint256"
+          }
+        ],
+        "name": "isHidden",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
+            "name": "from",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "count",
+            "type": "uint256"
+          }
+        ],
+        "name": "getHiddenFlags",
+        "outputs": [
+          {
+            "internalType": "bool[]",
+            "name": "flags",
+            "type": "bool[]"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "name": "canModerate",
+        "outputs": [
+          {
+            "internalType": "bool",
+            "name": "",
+            "type": "bool"
+          }
+        ],
+        "stateMutability": "view",
         "type": "function"
       }
     ],
@@ -481,15 +690,9 @@
         "type": "function"
       }
     ],
-    "BlogModeration": [
+    "IssuerRegistry": [
       {
-        "inputs": [
-          {
-            "internalType": "address",
-            "name": "blogAddress",
-            "type": "address"
-          }
-        ],
+        "inputs": [],
         "stateMutability": "nonpayable",
         "type": "constructor"
       },
@@ -503,19 +706,50 @@
             "type": "address"
           },
           {
+            "indexed": true,
+            "internalType": "address",
+            "name": "by",
+            "type": "address"
+          },
+          {
             "indexed": false,
-            "internalType": "bool",
-            "name": "enabled",
-            "type": "bool"
+            "internalType": "uint256",
+            "name": "removedAt",
+            "type": "uint256"
+          }
+        ],
+        "name": "IssuerRemoved",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
           },
           {
             "indexed": true,
             "internalType": "address",
             "name": "by",
             "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "setAt",
+            "type": "uint256"
           }
         ],
-        "name": "ModeratorUpdated",
+        "name": "IssuerSet",
         "type": "event"
       },
       {
@@ -538,64 +772,8 @@
         "type": "event"
       },
       {
-        "anonymous": false,
-        "inputs": [
-          {
-            "indexed": true,
-            "internalType": "uint256",
-            "name": "postId",
-            "type": "uint256"
-          },
-          {
-            "indexed": true,
-            "internalType": "address",
-            "name": "moderator",
-            "type": "address"
-          },
-          {
-            "indexed": false,
-            "internalType": "string",
-            "name": "reason",
-            "type": "string"
-          },
-          {
-            "indexed": false,
-            "internalType": "uint256",
-            "name": "hiddenAt",
-            "type": "uint256"
-          }
-        ],
-        "name": "PostHidden",
-        "type": "event"
-      },
-      {
-        "anonymous": false,
-        "inputs": [
-          {
-            "indexed": true,
-            "internalType": "uint256",
-            "name": "postId",
-            "type": "uint256"
-          },
-          {
-            "indexed": true,
-            "internalType": "address",
-            "name": "moderator",
-            "type": "address"
-          },
-          {
-            "indexed": false,
-            "internalType": "uint256",
-            "name": "unhiddenAt",
-            "type": "uint256"
-          }
-        ],
-        "name": "PostUnhidden",
-        "type": "event"
-      },
-      {
         "inputs": [],
-        "name": "MAX_REASON_LENGTH",
+        "name": "MAX_NAME_LENGTH",
         "outputs": [
           {
             "internalType": "uint256",
@@ -609,46 +787,12 @@
       },
       {
         "inputs": [],
-        "name": "blog",
-        "outputs": [
-          {
-            "internalType": "contract IBlogChain",
-            "name": "",
-            "type": "address"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function",
-        "constant": true
-      },
-      {
-        "inputs": [],
-        "name": "hiddenCount",
+        "name": "issuerCount",
         "outputs": [
           {
             "internalType": "uint256",
             "name": "",
             "type": "uint256"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function",
-        "constant": true
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "address",
-            "name": "",
-            "type": "address"
-          }
-        ],
-        "name": "isModerator",
-        "outputs": [
-          {
-            "internalType": "bool",
-            "name": "",
-            "type": "bool"
           }
         ],
         "stateMutability": "view",
@@ -677,12 +821,25 @@
             "type": "address"
           },
           {
-            "internalType": "bool",
-            "name": "enabled",
-            "type": "bool"
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
           }
         ],
-        "name": "setModerator",
+        "name": "setIssuer",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          }
+        ],
+        "name": "removeIssuer",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -703,98 +860,281 @@
       {
         "inputs": [
           {
-            "internalType": "uint256",
-            "name": "postId",
-            "type": "uint256"
-          },
-          {
-            "internalType": "string",
-            "name": "reason",
-            "type": "string"
-          }
-        ],
-        "name": "hidePost",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "uint256",
-            "name": "postId",
-            "type": "uint256"
-          }
-        ],
-        "name": "unhidePost",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "uint256",
-            "name": "postId",
-            "type": "uint256"
-          }
-        ],
-        "name": "isHidden",
-        "outputs": [
-          {
-            "internalType": "bool",
-            "name": "",
-            "type": "bool"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function",
-        "constant": true
-      },
-      {
-        "inputs": [
-          {
-            "internalType": "uint256",
-            "name": "from",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "count",
-            "type": "uint256"
-          }
-        ],
-        "name": "getHiddenFlags",
-        "outputs": [
-          {
-            "internalType": "bool[]",
-            "name": "flags",
-            "type": "bool[]"
-          }
-        ],
-        "stateMutability": "view",
-        "type": "function",
-        "constant": true
-      },
-      {
-        "inputs": [
-          {
             "internalType": "address",
             "name": "account",
             "type": "address"
           }
         ],
-        "name": "canModerate",
+        "name": "getIssuer",
         "outputs": [
           {
             "internalType": "bool",
-            "name": "",
+            "name": "verified",
             "type": "bool"
+          },
+          {
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "since",
+            "type": "uint256"
           }
         ],
         "stateMutability": "view",
         "type": "function",
         "constant": true
+      }
+    ],
+    "MultiSend": [
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "uint256",
+            "name": "batchId",
+            "type": "uint256"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "from",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "recipients",
+            "type": "uint256"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "amountEach",
+            "type": "uint256"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "total",
+            "type": "uint256"
+          },
+          {
+            "indexed": false,
+            "internalType": "string",
+            "name": "note",
+            "type": "string"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "sentAt",
+            "type": "uint256"
+          }
+        ],
+        "name": "BatchSent",
+        "type": "event"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "uint256",
+            "name": "batchId",
+            "type": "uint256"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "from",
+            "type": "address"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "to",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          }
+        ],
+        "name": "BatchTransfer",
+        "type": "event"
+      },
+      {
+        "inputs": [],
+        "name": "MAX_NOTE_LENGTH",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function",
+        "constant": true
+      },
+      {
+        "inputs": [],
+        "name": "MAX_RECIPIENTS",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function",
+        "constant": true
+      },
+      {
+        "inputs": [],
+        "name": "batchCount",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function",
+        "constant": true
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address payable[]",
+            "name": "recipients",
+            "type": "address[]"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amountEach",
+            "type": "uint256"
+          },
+          {
+            "internalType": "string",
+            "name": "note",
+            "type": "string"
+          }
+        ],
+        "name": "sendEach",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "batchId",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "payable",
+        "type": "function",
+        "payable": true
+      }
+    ],
+    "Payments": [
+      {
+        "anonymous": false,
+        "inputs": [
+          {
+            "indexed": true,
+            "internalType": "uint256",
+            "name": "id",
+            "type": "uint256"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "from",
+            "type": "address"
+          },
+          {
+            "indexed": true,
+            "internalType": "address",
+            "name": "to",
+            "type": "address"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "indexed": false,
+            "internalType": "string",
+            "name": "note",
+            "type": "string"
+          },
+          {
+            "indexed": false,
+            "internalType": "uint256",
+            "name": "sentAt",
+            "type": "uint256"
+          }
+        ],
+        "name": "Transferred",
+        "type": "event"
+      },
+      {
+        "inputs": [],
+        "name": "MAX_NOTE_LENGTH",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "transferCount",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address payable",
+            "name": "to",
+            "type": "address"
+          },
+          {
+            "internalType": "string",
+            "name": "note",
+            "type": "string"
+          }
+        ],
+        "name": "sendEth",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "id",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "payable",
+        "type": "function"
       }
     ]
   },
@@ -804,12 +1144,12 @@
         "address": "0xD5cde48D5e989b237bA38BA3E3F0064774f0E921",
         "deployBlock": 0
       },
-      "Payments": {
-        "address": "0xcb21621daE54bbd31c2eb4B6040c3672DF3FE5bf",
-        "deployBlock": 0
-      },
       "DocumentRegistry": {
         "address": "0xCF922f23a07f6b221c58917067f17C029406E982",
+        "deployBlock": 0
+      },
+      "Payments": {
+        "address": "0xcb21621daE54bbd31c2eb4B6040c3672DF3FE5bf",
         "deployBlock": 0
       }
     },
@@ -818,17 +1158,25 @@
         "address": "0x1b59c8aAAa7a258eafe7c708Fc27b6d4e2a7e7F0",
         "deployBlock": 12146786
       },
-      "Payments": {
-        "address": "0xaDBF8d7370383A83Eef6d3844b30f285Fc9f7e1c",
-        "deployBlock": 12151014
+      "BlogModeration": {
+        "address": "0x232959C6b36B7c99FDbe4b48DB6687DF915F6a9d",
+        "deployBlock": 12153299
       },
       "DocumentRegistry": {
         "address": "0xb6a99853dC40129d69D3A0e27438Fd4305A9654A",
         "deployBlock": 12151675
       },
-      "BlogModeration": {
-        "address": "0x232959C6b36B7c99FDbe4b48DB6687DF915F6a9d",
-        "deployBlock": 12153299
+      "IssuerRegistry": {
+        "address": "0x08Cd40123fa2D4e6EabbaC70e6887E4EDd67D6d3",
+        "deployBlock": 12158696
+      },
+      "MultiSend": {
+        "address": "0x1784eB2868c7ba89DdAbc685C4E1F817a4c4Da80",
+        "deployBlock": 12158699
+      },
+      "Payments": {
+        "address": "0xaDBF8d7370383A83Eef6d3844b30f285Fc9f7e1c",
+        "deployBlock": 12151014
       }
     }
   }
