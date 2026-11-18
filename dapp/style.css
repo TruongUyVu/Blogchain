@@ -967,6 +967,10 @@ textarea.input-field { resize: vertical; line-height: 1.6; }
 .topbar .btn-primary { background: var(--dnu-orange); color: var(--dnu-navy-dark); }
 .topbar .btn-primary:hover:not(:disabled) { background: #ff7d26; }
 
+/* Nút "Đổi ví" trên thanh trên cùng (nền xanh đậm): viền sáng, chữ trắng */
+.topbar .btn-switch { background: transparent; color: #fff; border-color: rgba(255, 255, 255, 0.55); }
+.topbar .btn-switch:hover:not(:disabled) { background: rgba(255, 255, 255, 0.12); border-color: #fff; }
+
 /* ---------- Chân trang ---------- */
 .footer {
   background: var(--dnu-navy-dark);

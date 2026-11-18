@@ -27,6 +27,7 @@ const walletBalanceEl = document.getElementById('walletBalance');
 const logsContainer = document.getElementById('logsContainer');
 const clearLogsBtn = document.getElementById('clearLogsBtn');
 const switchNetworkBtn = document.getElementById('switchNetworkBtn');
+const switchAccountBtn = document.getElementById('switchAccountBtn');
 const onboardCard = document.getElementById('onboardCard');
 const toastArea = document.getElementById('toastArea');
 
@@ -404,7 +405,9 @@ async function connectWallet() {
     await updateWalletInfo();
 
     connectBtnText.textContent = shortAddr(userAccount);
+    connectWalletBtn.title = `${userAccount} · bấm để đổi sang ví khác`;
     onboardCard.hidden = true;
+    switchAccountBtn.hidden = false;
     addLog(`Đã kết nối thành công với ví: ${userAccount}`, 'success', true);
 
     // Dữ liệu đã được đọc sẵn khi mở trang; các module vẽ lại theo ví vừa kết nối
@@ -414,6 +417,44 @@ async function connectWallet() {
   } catch (error) {
     console.error(error);
     addLog(`Lỗi kết nối ví: ${error.message || error}`, 'error');
+  }
+}
+
+// Dùng một tài khoản ví khác (sau khi bấm Đổi ví hoặc đổi tài khoản ngay trong MetaMask):
+// signer phải đổi theo, nếu không giao dịch vẫn ký bằng ví cũ; các module vẽ lại theo ví mới
+async function useAccount(account) {
+  if (!provider || !account) return;
+  if (userAccount && account.toLowerCase() === userAccount.toLowerCase()) return; // vẫn là ví cũ
+  userAccount = account;
+  signer = await provider.getSigner(account);
+  connectBtnText.textContent = shortAddr(userAccount);
+  connectWalletBtn.title = `${userAccount} · bấm để đổi sang ví khác`;
+  updateWalletInfo();
+  addLog(`Đã chuyển sang ví: ${userAccount}`, 'success', true);
+  runModuleHook('onWalletChanged');
+}
+
+// Nút "Đổi ví": mở bảng chọn tài khoản của MetaMask (wallet_requestPermissions) để chọn ví khác cho trang này.
+// Chưa kết nối ví thì làm như nút Kết nối ví.
+async function switchAccount() {
+  if (!provider) {
+    await connectWallet();
+    return;
+  }
+  try {
+    addLog('Mở MetaMask để chọn tài khoản: tích vào tài khoản muốn dùng rồi bấm Connect / Xác nhận.', 'info');
+    await window.ethereum.request({ method: 'wallet_requestPermissions', params: [{ eth_accounts: {} }] });
+    const accounts = await window.ethereum.request({ method: 'eth_accounts' }); // tài khoản đang chọn đứng đầu
+    if (accounts.length === 0) return;
+    if (accounts[0].toLowerCase() === (userAccount || '').toLowerCase()) {
+      addLog('Trang vẫn đang dùng ví cũ. Nếu muốn ví khác: mở MetaMask, bấm tên tài khoản ở trên cùng và chọn tài khoản đó.', 'info', true);
+      return;
+    }
+    await useAccount(accounts[0]);
+  } catch (error) {
+    console.error(error);
+    if (error.code === 4001 || error.code === 'ACTION_REJECTED') addLog('Đã hủy đổi ví, trang vẫn dùng ví cũ.', 'info', true);
+    else addLog(`Không đổi được ví: ${error.message || error}`, 'error');
   }
 }
 
@@ -611,7 +652,9 @@ function startApp() {
   if (savedTab && document.querySelector(`.tab[data-tab="${savedTab}"]`)) showTab(savedTab);
 
   for (const t of document.querySelectorAll('.tab')) t.addEventListener('click', () => showTab(t.dataset.tab));
-  connectWalletBtn.addEventListener('click', connectWallet);
+  // Đã kết nối thì bấm vào nút địa chỉ ví cũng là đổi ví
+  connectWalletBtn.addEventListener('click', () => (signer ? switchAccount() : connectWallet()));
+  switchAccountBtn.addEventListener('click', switchAccount);
   switchNetworkBtn.addEventListener('click', switchNetwork);
   clearLogsBtn.addEventListener('click', () => {
     logsContainer.innerHTML = '<div class="log-entry log-info">[Hệ thống] Nhật ký đã được xóa.</div>';
@@ -628,13 +671,7 @@ function startApp() {
         return;
       }
       if (!provider) return; // chưa bấm "Kết nối ví" trên trang này thì bỏ qua
-      userAccount = accounts[0];
-      // Signer phải đổi theo tài khoản mới, nếu không giao dịch vẫn ký bằng ví cũ
-      signer = await provider.getSigner();
-      connectBtnText.textContent = shortAddr(userAccount);
-      updateWalletInfo();
-      addLog(`Chuyển sang tài khoản ví: ${userAccount}`, 'info');
-      runModuleHook('onWalletChanged');
+      await useAccount(accounts[0]);
     });
     window.ethereum.on('chainChanged', () => window.location.reload());
   }

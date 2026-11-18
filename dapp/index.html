@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <!-- ?v=...: đổi số này mỗi lần sửa CSS/JS để trình duyệt tải bản mới thay vì bản lưu tạm (GitHub Pages lưu 10 phút) -->
-  <link rel="stylesheet" href="style.css?v=14" />
+  <link rel="stylesheet" href="style.css?v=15" />
   <!-- Ethers.js v6 CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
 </head>
@@ -34,6 +34,11 @@
         <button id="connectWalletBtn" class="btn btn-primary">
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg>
           <span id="connectBtnText">Kết nối ví MetaMask</span>
+        </button>
+        <!-- Hiện sau khi kết nối: mở bảng chọn tài khoản của MetaMask -->
+        <button id="switchAccountBtn" class="btn btn-switch" title="Chọn tài khoản MetaMask khác cho trang này" hidden>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m17 11 2 2 4-4"/></svg>
+          <span>Đổi ví</span>
         </button>
       </div>
     </div>
@@ -443,7 +448,7 @@
   </div>
 
   <!-- Lõi → các module chức năng → app.js (khởi động). Thêm chức năng mới: thêm <script src="js/<tên>.js"> trước app.js -->
-  <script src="js/core.js?v=16"></script>
+  <script src="js/core.js?v=17"></script>
   <script src="js/blog.js?v=15"></script>
   <script src="js/transfer.js?v=16"></script>
   <script src="js/docs.js?v=16"></script>

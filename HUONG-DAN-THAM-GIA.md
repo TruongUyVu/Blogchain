@@ -23,6 +23,8 @@ tiền thử nghiệm và xác thực tài liệu trên **cùng một blockchain
 1. Mở link DApp, bấm **Kết nối ví MetaMask** (góc trên bên phải), chọn tài khoản rồi bấm **Connect**.
 2. Nếu trang hiện nút **Chuyển sang Sepolia Testnet**, bấm nút đó rồi bấm **Approve / Switch network** trong MetaMask.
 3. Kết nối xong, dải thông tin hiện **Mạng: Sepolia Testnet**, địa chỉ ví và số dư.
+4. Muốn dùng **tài khoản MetaMask khác**: bấm nút **Đổi ví** (hoặc bấm vào địa chỉ ví) ở góc trên bên phải, tích chọn
+   tài khoản muốn dùng trong MetaMask rồi xác nhận. Trang tự cập nhật địa chỉ, số dư và quyền theo ví mới.
 
 ## Bước 3. Lấy ETH thử nghiệm (để trả phí giao dịch)
 
